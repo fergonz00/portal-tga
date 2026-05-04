@@ -237,6 +237,27 @@ const SUPABASE_URL = 'https://wjfglsafgaltusmbnccl.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndqZmdsc2FmZ2FsdHVzbWJuY2NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0MzM2OTksImV4cCI6MjA4OTAwOTY5OX0.OOwgyKDNQsbBaGDaL0OhJfc8eOsCClvvAPW0VFBKrOA';
 const SESSION_KEY = 'portal_tga_session';
 
+// Cookie compartida con todas las apps de *.titogonzalez.online (SSO).
+const SHARED_COOKIE = 'tga_session';
+const SHARED_DOMAIN = '.titogonzalez.online';
+
+function setSharedCookie(session) {
+  if (!session) return;
+  const safe = Object.assign({}, session);
+  delete safe.clave; // no incluir password en la cookie
+  const value = encodeURIComponent(JSON.stringify(safe));
+  const maxAge = 7 * 24 * 60 * 60; // 7 días
+  document.cookie = SHARED_COOKIE + '=' + value + '; path=/; domain=' + SHARED_DOMAIN + '; max-age=' + maxAge + '; Secure; SameSite=Lax';
+}
+function getSharedCookie() {
+  const m = document.cookie.match(new RegExp('(?:^|;\\s*)' + SHARED_COOKIE + '=([^;]+)'));
+  if (!m) return null;
+  try { return JSON.parse(decodeURIComponent(m[1])); } catch { return null; }
+}
+function clearSharedCookie() {
+  document.cookie = SHARED_COOKIE + '=; path=/; domain=' + SHARED_DOMAIN + '; max-age=0; Secure; SameSite=Lax';
+}
+
 // Catálogo de apps. Para sumar/cambiar URLs editar acá.
 const APPS = [
   {
@@ -317,7 +338,7 @@ async function login() {
   btn.textContent = 'Ingresando...';
   try {
     const data = await sbFetch(
-      `tasador_usuarios?usuario=eq.${encodeURIComponent(user)}&clave=eq.${encodeURIComponent(pass)}&activo=eq.true&select=id,usuario,nombre,email,roles,rol`
+      `tasador_usuarios?usuario=eq.${encodeURIComponent(user)}&clave=eq.${encodeURIComponent(pass)}&activo=eq.true&select=*`
     );
     if (!data.length) {
       errEl.textContent = 'Usuario o contraseña incorrectos.';
@@ -325,10 +346,12 @@ async function login() {
       return;
     }
     const session = data[0];
+    delete session.clave; // nunca persistimos la clave
     session.rolesArr = (Array.isArray(session.roles) && session.roles.length)
       ? session.roles
       : (session.rol ? [session.rol] : ['vendedor']);
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    setSharedCookie(session);
     enterApp(session);
   } catch (e) {
     console.error(e);
@@ -342,6 +365,7 @@ async function login() {
 
 function logout() {
   localStorage.removeItem(SESSION_KEY);
+  clearSharedCookie();
   document.getElementById('appScreen').classList.add('hidden');
   document.getElementById('loginScreen').classList.remove('hidden');
   document.getElementById('loginUser').value = '';
@@ -391,11 +415,24 @@ function openApp(url) {
     if (e.key === 'Enter') document.getElementById('loginPass').focus();
   });
 
+  // Prioridad: cookie compartida (SSO) > localStorage propio.
+  const cookieSession = getSharedCookie();
+  if (cookieSession && cookieSession.usuario) {
+    cookieSession.rolesArr = (Array.isArray(cookieSession.roles) && cookieSession.roles.length)
+      ? cookieSession.roles
+      : (cookieSession.rol ? [cookieSession.rol] : ['vendedor']);
+    localStorage.setItem(SESSION_KEY, JSON.stringify(cookieSession));
+    enterApp(cookieSession);
+    return;
+  }
   const raw = localStorage.getItem(SESSION_KEY);
   if (raw) {
     try {
       const session = JSON.parse(raw);
-      if (session && session.usuario) enterApp(session);
+      if (session && session.usuario) {
+        setSharedCookie(session); // re-propagar a otras apps si hay sesión local pero no cookie
+        enterApp(session);
+      }
     } catch {
       localStorage.removeItem(SESSION_KEY);
     }
