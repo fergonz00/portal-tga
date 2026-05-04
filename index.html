@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal TGA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --vw-blue: #001E50;
+  --vw-blue-light: #00437A;
+  --vw-white: #FFFFFF;
+  --vw-grey-1: #F5F5F5;
+  --vw-grey-2: #E5E5E5;
+  --vw-grey-3: #999999;
+  --vw-grey-4: #666666;
+  --vw-black: #1A1A1A;
+  --green: #10B981;
+  --orange: #F59E0B;
+  --red: #EF4444;
+  --radius: 12px;
+  --shadow: 0 2px 12px rgba(0,30,80,0.08);
+  --shadow-lg: 0 8px 32px rgba(0,30,80,0.12);
+  --font: 'DM Sans', sans-serif;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: var(--font); background: var(--vw-grey-1); color: var(--vw-black); min-height:100vh; -webkit-font-smoothing: antialiased; }
+button { font-family: var(--font); cursor: pointer; border: none; }
+input { font-family: var(--font); }
+a { color: inherit; text-decoration: none; }
+
+.hidden { display: none !important; }
+
+/* ============ LOGIN ============ */
+.login-screen {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, var(--vw-blue) 0%, var(--vw-blue-light) 100%);
+  padding: 20px;
+}
+.login-box {
+  background: var(--vw-white);
+  border-radius: var(--radius);
+  padding: 40px 32px;
+  width: 100%; max-width: 380px;
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+}
+.login-box .logo {
+  font-size: 28px; font-weight: 700;
+  color: var(--vw-blue);
+  margin-bottom: 4px;
+  letter-spacing: -0.5px;
+}
+.login-box .subtitle {
+  font-size: 14px; color: var(--vw-grey-3);
+  margin-bottom: 28px;
+}
+.login-box input {
+  width: 100%; padding: 14px 16px;
+  border: 2px solid var(--vw-grey-2);
+  border-radius: 8px; font-size: 15px;
+  margin-bottom: 14px; outline: none;
+  transition: border-color 0.2s;
+}
+.login-box input:focus { border-color: var(--vw-blue); }
+.login-box button {
+  width: 100%; padding: 14px;
+  background: var(--vw-blue);
+  color: white; font-size: 15px; font-weight: 600;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+.login-box button:hover { background: var(--vw-blue-light); }
+.login-box button:disabled { opacity: 0.6; cursor: not-allowed; }
+.login-error {
+  color: var(--red); font-size: 13px;
+  margin-top: 12px; display: none;
+  background: #FEE2E2; padding: 10px; border-radius: 6px;
+}
+
+/* ============ HEADER ============ */
+.app-header {
+  background: var(--vw-blue);
+  color: white;
+  padding: 14px 20px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+}
+.app-header .brand {
+  font-size: 17px; font-weight: 700;
+  letter-spacing: -0.3px;
+}
+.app-header .user-info {
+  display: flex; align-items: center; gap: 12px;
+  font-size: 13px;
+}
+.app-header .user-name { opacity: 0.9; }
+.app-header button {
+  background: rgba(255,255,255,0.15);
+  color: white; padding: 8px 14px;
+  border-radius: 6px; font-size: 13px; font-weight: 500;
+  transition: background 0.2s;
+}
+.app-header button:hover { background: rgba(255,255,255,0.25); }
+
+/* ============ DASHBOARD ============ */
+.dashboard {
+  max-width: 1100px; margin: 0 auto;
+  padding: 32px 20px 60px;
+}
+.dashboard h2 {
+  font-size: 22px; font-weight: 700;
+  color: var(--vw-blue);
+  margin-bottom: 6px;
+}
+.dashboard .lead {
+  font-size: 14px; color: var(--vw-grey-4);
+  margin-bottom: 28px;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+.app-card {
+  background: white;
+  border-radius: var(--radius);
+  padding: 22px 20px;
+  box-shadow: var(--shadow);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex; flex-direction: column;
+  min-height: 150px;
+  position: relative;
+}
+.app-card:hover {
+  box-shadow: var(--shadow-lg);
+  border-color: var(--vw-blue);
+  transform: translateY(-2px);
+}
+.app-card .card-icon {
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  background: var(--vw-blue);
+  color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: 700;
+  margin-bottom: 14px;
+}
+.app-card.color-orange .card-icon { background: var(--orange); }
+.app-card.color-green .card-icon { background: var(--green); }
+.app-card.color-red .card-icon { background: var(--red); }
+.app-card.color-purple .card-icon { background: #7C3AED; }
+.app-card.color-teal .card-icon { background: #0D9488; }
+.app-card .card-title {
+  font-size: 16px; font-weight: 600;
+  color: var(--vw-black);
+  margin-bottom: 4px;
+}
+.app-card .card-desc {
+  font-size: 13px; color: var(--vw-grey-4);
+  line-height: 1.4;
+  flex: 1;
+}
+.app-card .card-host {
+  font-size: 11px; color: var(--vw-grey-3);
+  margin-top: 12px;
+  font-family: monospace;
+}
+.app-card .card-badge {
+  position: absolute; top: 14px; right: 14px;
+  background: var(--vw-grey-1);
+  color: var(--vw-grey-4);
+  font-size: 10px; font-weight: 600;
+  padding: 3px 8px; border-radius: 100px;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+
+.section-divider {
+  height: 1px; background: var(--vw-grey-2);
+  margin: 32px 0 20px;
+}
+.section-label {
+  font-size: 12px; color: var(--vw-grey-3);
+  text-transform: uppercase; letter-spacing: 1px;
+  margin-bottom: 14px; font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .card-grid { grid-template-columns: 1fr; }
+  .dashboard { padding: 20px 14px 40px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ==================== LOGIN ==================== -->
+<div id="loginScreen" class="login-screen">
+  <div class="login-box">
+    <div class="logo">Portal TGA</div>
+    <div class="subtitle">Acceso unificado a herramientas internas</div>
+    <input type="text" id="loginUser" placeholder="Usuario" autocomplete="username">
+    <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password">
+    <button id="loginBtn" onclick="login()">Ingresar</button>
+    <div id="loginError" class="login-error">Usuario o contraseña incorrectos</div>
+  </div>
+</div>
+
+<!-- ==================== APP ==================== -->
+<div id="appScreen" class="hidden">
+  <header class="app-header">
+    <div class="brand">Portal TGA</div>
+    <div class="user-info">
+      <span class="user-name" id="userName"></span>
+      <button onclick="logout()">Salir</button>
+    </div>
+  </header>
+
+  <main class="dashboard">
+    <h2>Hola, <span id="greetName"></span> 👋</h2>
+    <p class="lead">Elegí la herramienta a la que querés ingresar.</p>
+
+    <div class="card-grid" id="cardGrid"></div>
+  </main>
+</div>
+
+<script>
+// =======================================================================
+// CONFIG
+// =======================================================================
+const SUPABASE_URL = 'https://wjfglsafgaltusmbnccl.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndqZmdsc2FmZ2FsdHVzbWJuY2NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0MzM2OTksImV4cCI6MjA4OTAwOTY5OX0.OOwgyKDNQsbBaGDaL0OhJfc8eOsCClvvAPW0VFBKrOA';
+const SESSION_KEY = 'portal_tga_session';
+
+// Catálogo de apps. Para sumar/cambiar URLs editar acá.
+const APPS = [
+  {
+    id: 'tasador',
+    title: 'Tasador',
+    desc: 'Tasaciones de usados Volkswagen.',
+    url: 'https://tasador.titogonzalez.online',
+    icon: 'T',
+    color: 'blue',
+  },
+  {
+    id: 'consulta0km',
+    title: 'Consulta 0KM',
+    desc: 'Pedido de mejora de precio en 0km.',
+    url: 'https://consulta0km.titogonzalez.online',
+    icon: '0',
+    color: 'orange',
+  },
+  {
+    id: 'precios',
+    title: 'Precios',
+    desc: 'Lista de precios de la red.',
+    url: 'https://precios.titogonzalez.online',
+    icon: '$',
+    color: 'green',
+  },
+  {
+    id: 'formularios',
+    title: 'Formularios',
+    desc: 'Panel con F01 y VWFS — ver lo que cargaron los clientes, copiar link para enviarles, o llenarlo vos.',
+    url: 'https://f01.titogonzalez.online/panel.html',
+    icon: 'F',
+    color: 'purple',
+    badge: 'Login propio',
+  },
+  {
+    id: 'crm',
+    title: 'CRM',
+    desc: 'CRM de gestión comercial.',
+    url: '#',  // TODO: pasarme la URL del CRM de Mati
+    icon: 'C',
+    color: 'red',
+    badge: 'Login propio',
+  },
+];
+
+// =======================================================================
+// SUPABASE FETCH
+// =======================================================================
+async function sbFetch(path, opts = {}) {
+  const url = SUPABASE_URL + '/rest/v1/' + path;
+  const headers = Object.assign({
+    'apikey': SUPABASE_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_KEY,
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  }, opts.headers || {});
+  const res = await fetch(url, Object.assign({}, opts, { headers }));
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Supabase ${res.status}: ${text}`);
+  }
+  return res.json();
+}
+
+// =======================================================================
+// LOGIN
+// =======================================================================
+async function login() {
+  const user = document.getElementById('loginUser').value.trim().toLowerCase();
+  const pass = document.getElementById('loginPass').value.trim();
+  const errEl = document.getElementById('loginError');
+  const btn = document.getElementById('loginBtn');
+  errEl.style.display = 'none';
+  if (!user || !pass) return;
+
+  btn.disabled = true;
+  btn.textContent = 'Ingresando...';
+  try {
+    const data = await sbFetch(
+      `tasador_usuarios?usuario=eq.${encodeURIComponent(user)}&clave=eq.${encodeURIComponent(pass)}&activo=eq.true&select=id,usuario,nombre,email,roles,rol`
+    );
+    if (!data.length) {
+      errEl.textContent = 'Usuario o contraseña incorrectos.';
+      errEl.style.display = 'block';
+      return;
+    }
+    const session = data[0];
+    session.rolesArr = (Array.isArray(session.roles) && session.roles.length)
+      ? session.roles
+      : (session.rol ? [session.rol] : ['vendedor']);
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    enterApp(session);
+  } catch (e) {
+    console.error(e);
+    errEl.textContent = 'Error de conexión. Probá de nuevo.';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Ingresar';
+  }
+}
+
+function logout() {
+  localStorage.removeItem(SESSION_KEY);
+  document.getElementById('appScreen').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+}
+
+function enterApp(session) {
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('appScreen').classList.remove('hidden');
+  const displayName = session.nombre || session.usuario;
+  document.getElementById('userName').textContent = displayName;
+  document.getElementById('greetName').textContent = (displayName || '').split(' ')[0] || 'vendedor';
+  renderCards();
+}
+
+function renderCards() {
+  const grid = document.getElementById('cardGrid');
+  grid.innerHTML = APPS.map(app => {
+    const host = (() => { try { return new URL(app.url).host; } catch { return ''; } })();
+    const isExternal = app.url && app.url !== '#';
+    const badge = app.badge ? `<span class="card-badge">${app.badge}</span>` : '';
+    const onClick = isExternal ? `onclick="openApp('${app.url}')"` : 'onclick="alert(\'Próximamente\')"';
+    return `
+      <div class="app-card color-${app.color}" ${onClick}>
+        ${badge}
+        <div class="card-icon">${app.icon}</div>
+        <div class="card-title">${app.title}</div>
+        <div class="card-desc">${app.desc}</div>
+        <div class="card-host">${host || '—'}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function openApp(url) {
+  window.open(url, '_blank', 'noopener');
+}
+
+// =======================================================================
+// INIT
+// =======================================================================
+(function init() {
+  document.getElementById('loginPass').addEventListener('keydown', e => {
+    if (e.key === 'Enter') login();
+  });
+  document.getElementById('loginUser').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('loginPass').focus();
+  });
+
+  const raw = localStorage.getItem(SESSION_KEY);
+  if (raw) {
+    try {
+      const session = JSON.parse(raw);
+      if (session && session.usuario) enterApp(session);
+    } catch {
+      localStorage.removeItem(SESSION_KEY);
+    }
+  }
+})();
+</script>
+</body>
+</html>
