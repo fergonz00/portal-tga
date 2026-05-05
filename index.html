@@ -401,7 +401,12 @@ async function login() {
 function logout() {
   localStorage.removeItem(SESSION_KEY);
   clearSharedCookie();
+  currentSession = null;
+  const banner = document.getElementById('impersonateBanner');
+  if (banner) banner.remove();
+  document.body.style.paddingTop = '';
   document.getElementById('appScreen').classList.add('hidden');
+  document.getElementById('sistemaScreen').classList.add('hidden');
   document.getElementById('loginScreen').classList.remove('hidden');
   document.getElementById('loginUser').value = '';
   document.getElementById('loginPass').value = '';
@@ -418,6 +423,7 @@ function enterApp(session) {
   document.getElementById('greetName').textContent = (displayName || '').split(' ')[0] || 'vendedor';
   document.getElementById('btnSistema').style.display = _esSuperadmin() ? '' : 'none';
   renderCards();
+  _renderImpersonateBanner();
 }
 
 function renderCards() {
@@ -535,10 +541,15 @@ function renderUsuarios() {
         + '<button onclick="copiarClaveUsuario(\'' + idStr + '\')" title="Copiar" style="background:none; border:none; cursor:pointer; padding:2px; color:var(--vw-blue); font-size:13px">📋</button>'
         + '</div>'
       : '';
+    const esYo = currentSession && String(u.id) === String(currentSession.id);
+    const btnImpers = (activo && !esYo)
+      ? '<button onclick="entrarComoUsuario(\'' + idStr + '\')" title="Entrar como este usuario" style="padding:6px 10px; background:#FED7AA; color:#9A3412; border:none; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600">👤→ Entrar como</button>'
+      : '';
     const acciones =
       '<button onclick="abrirEditarUsuario(\'' + idStr + '\')" title="Editar" style="padding:6px 10px; background:var(--vw-grey-1); color:var(--vw-grey-4); border:none; border-radius:6px; cursor:pointer; font-size:12px">✏️</button>'
       + '<button onclick="abrirResetClave(\'' + idStr + '\')" title="Resetear clave" style="padding:6px 10px; background:var(--vw-blue-light); color:white; border:none; border-radius:6px; cursor:pointer; font-size:12px">🔄</button>'
-      + '<button onclick="toggleActivoUsuario(\'' + idStr + '\', ' + (!activo) + ')" title="' + (activo ? 'Desactivar' : 'Activar') + '" style="padding:6px 10px; background:' + (activo ? '#fee' : '#efe') + '; color:' + (activo ? '#c00' : '#060') + '; border:none; border-radius:6px; cursor:pointer; font-size:12px">' + (activo ? '⏸' : '▶') + '</button>';
+      + '<button onclick="toggleActivoUsuario(\'' + idStr + '\', ' + (!activo) + ')" title="' + (activo ? 'Desactivar' : 'Activar') + '" style="padding:6px 10px; background:' + (activo ? '#fee' : '#efe') + '; color:' + (activo ? '#c00' : '#060') + '; border:none; border-radius:6px; cursor:pointer; font-size:12px">' + (activo ? '⏸' : '▶') + '</button>'
+      + btnImpers;
     return '<div style="background:white; border:1px solid var(--vw-grey-2); border-radius:8px; padding:12px 14px; margin-bottom:8px; opacity:' + (activo ? '1' : '0.6') + '; display:flex; align-items:center; gap:12px; flex-wrap:wrap; box-shadow:var(--shadow)">'
       + '<div style="flex:1; min-width:200px; display:flex; flex-direction:column; gap:4px">'
       +   '<div style="font-weight:700; font-size:14px; color:var(--vw-blue)">' + _escapeHtmlUsr(u.usuario) + ' <span style="font-weight:400; color:var(--vw-grey-4); font-size:13px">— ' + _escapeHtmlUsr(u.nombre || '') + '</span></div>'
@@ -754,6 +765,74 @@ async function guardarUsuarioModal(modo, id) {
       _mostrarErrorUsuario('Error: ' + (e.message || ''));
     }
   }
+}
+
+// =======================================================================
+// IMPERSONATE · entrar como otro usuario (cross-app via cookie compartida)
+// =======================================================================
+async function entrarComoUsuario(id) {
+  if (!_esSuperadmin()) { showToast('No autorizado'); return; }
+  const u = usuariosData.find(x => String(x.id) === String(id));
+  if (!u) { showToast('Usuario no encontrado'); return; }
+  if (u.activo === false) { showToast('Usuario inactivo'); return; }
+  if (currentSession && String(u.id) === String(currentSession.id)) { showToast('Ya sos vos'); return; }
+  if (!confirm('Entrar como "' + u.usuario + '"' + (u.nombre ? ' (' + u.nombre + ')' : '') + '?\n\nVas a navegar como ese usuario en TODAS las apps hasta que vuelvas a tu sesión.')) return;
+
+  // Si ya estaba impersonando, conservo al original (no apilamos sesiones).
+  const original = (currentSession && currentSession._impersonatedBy) ? currentSession._impersonatedBy : currentSession;
+  const safeOriginal = Object.assign({}, original);
+  delete safeOriginal.clave;
+  delete safeOriginal._impersonatedBy;
+
+  const safeNew = Object.assign({}, u);
+  delete safeNew.clave;
+  safeNew.rolesArr = (Array.isArray(safeNew.roles) && safeNew.roles.length)
+    ? safeNew.roles
+    : (safeNew.rol ? [safeNew.rol] : ['vendedor']);
+  safeNew._impersonatedBy = safeOriginal;
+
+  localStorage.setItem(SESSION_KEY, JSON.stringify(safeNew));
+  setSharedCookie(safeNew);
+  currentSession = safeNew;
+  cerrarSistema();
+  enterApp(safeNew);
+  showToast('Entraste como ' + u.usuario);
+}
+
+function volverASesionOriginal() {
+  if (!currentSession || !currentSession._impersonatedBy) return;
+  const original = Object.assign({}, currentSession._impersonatedBy);
+  delete original._impersonatedBy;
+  original.rolesArr = (Array.isArray(original.roles) && original.roles.length)
+    ? original.roles
+    : (original.rol ? [original.rol] : ['vendedor']);
+  localStorage.setItem(SESSION_KEY, JSON.stringify(original));
+  setSharedCookie(original);
+  currentSession = original;
+  enterApp(original);
+  showToast('Volviste a tu sesión');
+}
+
+function _renderImpersonateBanner() {
+  let banner = document.getElementById('impersonateBanner');
+  const imp = currentSession && currentSession._impersonatedBy;
+  if (!imp) {
+    if (banner) banner.remove();
+    document.body.style.paddingTop = '';
+    return;
+  }
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'impersonateBanner';
+    banner.style.cssText = 'position:fixed; top:0; left:0; right:0; background:#9A3412; color:#fff; padding:8px 14px; font-size:13px; font-weight:600; z-index:9999; display:flex; justify-content:space-between; align-items:center; gap:12px; box-shadow:0 2px 6px rgba(0,0,0,0.2); flex-wrap:wrap';
+    document.body.appendChild(banner);
+    document.body.style.paddingTop = '36px';
+  }
+  const cur = _escapeHtmlUsr(currentSession.usuario || '?');
+  const curN = currentSession.nombre ? ' (' + _escapeHtmlUsr(currentSession.nombre) + ')' : '';
+  const origU = _escapeHtmlUsr(imp.usuario || '?');
+  banner.innerHTML = '<span>👤 Estás viendo como <strong>' + cur + '</strong>' + curN + '</span>'
+    + '<button onclick="volverASesionOriginal()" style="background:#fff; color:#9A3412; border:none; padding:5px 12px; border-radius:5px; cursor:pointer; font-weight:700; font-size:12px">← Volver a ' + origU + '</button>';
 }
 
 async function toggleActivoUsuario(id, nuevoEstado) {
