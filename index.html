@@ -545,11 +545,15 @@ function renderUsuarios() {
     const btnImpers = (activo && !esYo)
       ? '<button onclick="entrarComoUsuario(\'' + idStr + '\')" title="Entrar como este usuario" style="padding:6px 10px; background:#FED7AA; color:#9A3412; border:none; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600">👤→ Entrar como</button>'
       : '';
+    const btnEliminar = !esYo
+      ? '<button onclick="eliminarUsuario(\'' + idStr + '\')" title="Eliminar definitivamente" style="padding:6px 10px; background:#fee; color:#c00; border:1px solid #fcc; border-radius:6px; cursor:pointer; font-size:12px">🗑</button>'
+      : '';
     const acciones =
       '<button onclick="abrirEditarUsuario(\'' + idStr + '\')" title="Editar" style="padding:6px 10px; background:var(--vw-grey-1); color:var(--vw-grey-4); border:none; border-radius:6px; cursor:pointer; font-size:12px">✏️</button>'
       + '<button onclick="abrirResetClave(\'' + idStr + '\')" title="Resetear clave" style="padding:6px 10px; background:var(--vw-blue-light); color:white; border:none; border-radius:6px; cursor:pointer; font-size:12px">🔄</button>'
       + '<button onclick="toggleActivoUsuario(\'' + idStr + '\', ' + (!activo) + ')" title="' + (activo ? 'Desactivar' : 'Activar') + '" style="padding:6px 10px; background:' + (activo ? '#fee' : '#efe') + '; color:' + (activo ? '#c00' : '#060') + '; border:none; border-radius:6px; cursor:pointer; font-size:12px">' + (activo ? '⏸' : '▶') + '</button>'
-      + btnImpers;
+      + btnImpers
+      + btnEliminar;
     return '<div style="background:white; border:1px solid var(--vw-grey-2); border-radius:8px; padding:12px 14px; margin-bottom:8px; opacity:' + (activo ? '1' : '0.6') + '; display:flex; align-items:center; gap:12px; flex-wrap:wrap; box-shadow:var(--shadow)">'
       + '<div style="flex:1; min-width:200px; display:flex; flex-direction:column; gap:4px">'
       +   '<div style="font-weight:700; font-size:14px; color:var(--vw-blue)">' + _escapeHtmlUsr(u.usuario) + ' <span style="font-weight:400; color:var(--vw-grey-4); font-size:13px">— ' + _escapeHtmlUsr(u.nombre || '') + '</span></div>'
@@ -599,15 +603,32 @@ function _mostrarUsuarioModal(modo, u) {
     + (hint ? '<div style="font-size:11px; color:var(--vw-grey-3); margin-top:3px">' + hint + '</div>' : '')
     + '</label>';
 
-  const rolSelect = (sel) =>
-    '<label style="display:block; margin-bottom:10px">'
-    + '<div style="font-size:12px; color:var(--vw-grey-4); margin-bottom:3px">Rol</div>'
-    + '<select id="usrRol" style="width:100%; padding:10px; border:1px solid var(--vw-grey-2); border-radius:6px; box-sizing:border-box">'
-    +   '<option value="vendedor"' + (sel==='vendedor'?' selected':'') + '>Vendedor</option>'
-    +   '<option value="tasador_fisico"' + (sel==='tasador_fisico'?' selected':'') + '>Tasador físico</option>'
-    +   '<option value="admin"' + (sel==='admin'?' selected':'') + '>Administrador</option>'
-    + '</select>'
-    + '</label>';
+  // Roles disponibles en todo el ecosistema TGA. Se pueden combinar (multiselect).
+  const ROLES_DISPONIBLES = [
+    { value: 'vendedor', label: 'Vendedor', desc: 'Tasador / Consulta 0KM / Precios' },
+    { value: 'gerente', label: 'Gerente', desc: 'Consulta 0KM (puede cargar por otros)' },
+    { value: 'tasador_fisico', label: 'Tasador físico', desc: 'Tasador (inspecciones presenciales)' },
+    { value: 'admin', label: 'Administrador', desc: 'Tasador (admin completo)' },
+    { value: 'f01_owner', label: 'F01 owner', desc: 'Panel formularios (owner)' },
+    { value: 'f01_admin', label: 'F01 admin', desc: 'Panel formularios (admin)' },
+  ];
+  const rolesMulti = (selArr) => {
+    const sel = Array.isArray(selArr) && selArr.length ? selArr : [];
+    const opts = ROLES_DISPONIBLES.map(r => {
+      const checked = sel.includes(r.value) ? ' checked' : '';
+      return '<label style="display:flex; align-items:flex-start; gap:8px; padding:8px 10px; border:1px solid var(--vw-grey-2); border-radius:6px; cursor:pointer; background:white">'
+        + '<input type="checkbox" name="usrRolMulti" value="' + r.value + '"' + checked + ' style="margin-top:2px; width:16px; height:16px; cursor:pointer">'
+        + '<div style="flex:1; min-width:0">'
+        +   '<div style="font-size:13px; font-weight:600; color:var(--vw-blue)">' + r.label + '</div>'
+        +   '<div style="font-size:11px; color:var(--vw-grey-4)">' + r.desc + '</div>'
+        + '</div>'
+        + '</label>';
+    }).join('');
+    return '<div style="margin-bottom:10px">'
+      + '<div style="font-size:12px; color:var(--vw-grey-4); margin-bottom:6px">Roles (podés tildar más de uno)</div>'
+      + '<div style="display:flex; flex-direction:column; gap:6px">' + opts + '</div>'
+      + '</div>';
+  };
 
   let bodyHtml = '';
   if (modo === 'nuevo') {
@@ -615,7 +636,7 @@ function _mostrarUsuarioModal(modo, u) {
       inp('Usuario (sin espacios, en minúscula)', 'usrUsuario', '')
       + inp('Nombre y apellido', 'usrNombre', '')
       + inp('Clave provisoria (8+, letras y números)', 'usrClave', '', 'El usuario deberá cambiarla en el primer login.')
-      + rolSelect(rolActual)
+      + rolesMulti(['vendedor'])
       + inp('Email (opcional)', 'usrEmail', '')
       + inp('Teléfono WhatsApp (opcional, formato 549...)', 'usrTelWA', '')
       + inp('CallMeBot key (opcional)', 'usrCallmebot', '');
@@ -624,7 +645,7 @@ function _mostrarUsuarioModal(modo, u) {
     bodyHtml =
       '<div style="font-size:13px; color:var(--vw-grey-4); margin-bottom:12px; padding:8px; background:var(--vw-grey-1); border-radius:6px"><b>' + _escapeHtmlUsr(existente.usuario) + '</b> — el nombre de usuario no se puede cambiar</div>'
       + inp('Nombre y apellido', 'usrNombre', existente.nombre || '')
-      + rolSelect(rolActual)
+      + rolesMulti(rolesArr)
       + inp('Email', 'usrEmail', existente.email || '')
       + inp('Teléfono WhatsApp', 'usrTelWA', existente.telefono_wa || '')
       + inp('CallMeBot key', 'usrCallmebot', existente.callmebot_key || '')
@@ -684,11 +705,16 @@ async function sbWrite(path, opts) {
 async function guardarUsuarioModal(modo, id) {
   if (!_esSuperadmin()) { showToast('No autorizado'); return; }
 
+  function leerRolesSeleccionados() {
+    const cbs = document.querySelectorAll('input[name="usrRolMulti"]:checked');
+    return Array.from(cbs).map(cb => cb.value);
+  }
+
   if (modo === 'nuevo') {
     const usuario = (document.getElementById('usrUsuario').value || '').trim().toLowerCase();
     const nombre = (document.getElementById('usrNombre').value || '').trim();
     const clave = (document.getElementById('usrClave').value || '').trim();
-    const rol = document.getElementById('usrRol').value;
+    const rolesSel = leerRolesSeleccionados();
     const email = (document.getElementById('usrEmail').value || '').trim();
     const telWa = (document.getElementById('usrTelWA').value || '').trim();
     const callmebot = (document.getElementById('usrCallmebot').value || '').trim();
@@ -698,6 +724,7 @@ async function guardarUsuarioModal(modo, id) {
     if (!nombre) return _mostrarErrorUsuario('Nombre es obligatorio');
     const v = validarClaveUsuario(clave);
     if (!v.ok) return _mostrarErrorUsuario(v.msg);
+    if (!rolesSel.length) return _mostrarErrorUsuario('Tildá al menos un rol');
     if (usuariosData.some(u => u.usuario === usuario)) return _mostrarErrorUsuario('Ya existe un usuario con ese nombre');
 
     try {
@@ -705,7 +732,7 @@ async function guardarUsuarioModal(modo, id) {
         method: 'POST',
         body: JSON.stringify({
           usuario, nombre, clave,
-          rol, roles: [rol],
+          rol: rolesSel[0], roles: rolesSel,
           email: email || null,
           telefono_wa: telWa || null,
           callmebot_key: callmebot || null,
@@ -722,19 +749,20 @@ async function guardarUsuarioModal(modo, id) {
 
   } else if (modo === 'editar') {
     const nombre = (document.getElementById('usrNombre').value || '').trim();
-    const rol = document.getElementById('usrRol').value;
+    const rolesSel = leerRolesSeleccionados();
     const email = (document.getElementById('usrEmail').value || '').trim();
     const telWa = (document.getElementById('usrTelWA').value || '').trim();
     const callmebot = (document.getElementById('usrCallmebot').value || '').trim();
     const activo = document.getElementById('usrActivo').checked;
     if (!nombre) return _mostrarErrorUsuario('Nombre es obligatorio');
+    if (!rolesSel.length) return _mostrarErrorUsuario('Tildá al menos un rol');
 
     try {
       await sbWrite('tasador_usuarios?id=eq.' + encodeURIComponent(id), {
         method: 'PATCH',
         body: JSON.stringify({
           nombre,
-          rol, roles: [rol],
+          rol: rolesSel[0], roles: rolesSel,
           email: email || null,
           telefono_wa: telWa || null,
           callmebot_key: callmebot || null,
@@ -851,6 +879,31 @@ async function toggleActivoUsuario(id, nuevoEstado) {
   } catch(e) {
     console.error(e);
     showToast('Error al guardar');
+  }
+}
+
+async function eliminarUsuario(id) {
+  if (!_esSuperadmin()) { showToast('No autorizado'); return; }
+  const u = usuariosData.find(x => String(x.id) === String(id));
+  if (!u) return;
+  if (currentSession && String(u.id) === String(currentSession.id)) {
+    showToast('No te podés eliminar a vos mismo');
+    return;
+  }
+  const ok = confirm(
+    '¿ELIMINAR DEFINITIVAMENTE al usuario "' + u.usuario + '"' + (u.nombre ? ' (' + u.nombre + ')' : '') + '?\n\n' +
+    'Esta acción no se puede deshacer. Si el usuario tiene tasaciones, consultas o formularios cargados, ' +
+    'la base de datos puede rechazar la operación por integridad referencial. ' +
+    'Si solo querés que no pueda entrar, mejor desactivalo (botón ⏸).'
+  );
+  if (!ok) return;
+  try {
+    await sbWrite('tasador_usuarios?id=eq.' + encodeURIComponent(id), { method: 'DELETE' });
+    showToast('Usuario eliminado');
+    await loadUsuarios();
+  } catch(e) {
+    console.error(e);
+    showToast('No se pudo eliminar: ' + (e.message || 'error'));
   }
 }
 
