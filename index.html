@@ -217,6 +217,7 @@ a { color: inherit; text-decoration: none; }
     <div class="brand">Portal TGA</div>
     <div class="user-info">
       <span class="user-name" id="userName"></span>
+      <button id="btnSistema" onclick="abrirSistema()" style="display:none">⚙ Sistema</button>
       <button onclick="logout()">Salir</button>
     </div>
   </header>
@@ -229,6 +230,32 @@ a { color: inherit; text-decoration: none; }
   </main>
 </div>
 
+<!-- ==================== SISTEMA (solo superadmins) ==================== -->
+<div id="sistemaScreen" class="hidden">
+  <header class="app-header">
+    <div class="brand">⚙ Sistema · Portal TGA</div>
+    <div class="user-info">
+      <span class="user-name" id="userNameSis"></span>
+      <button onclick="cerrarSistema()">← Volver al portal</button>
+    </div>
+  </header>
+
+  <main class="dashboard">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; flex-wrap:wrap">
+      <div>
+        <h2 style="margin-bottom:4px">Usuarios del ecosistema TGA</h2>
+        <p class="lead" style="margin:0">Tabla <code style="background:var(--vw-grey-2); padding:2px 6px; border-radius:4px; font-size:12px">tasador_usuarios</code> · cambios aplican a todas las apps.</p>
+      </div>
+      <button onclick="abrirNuevoUsuario()" style="background:var(--vw-blue); color:white; padding:10px 16px; border-radius:8px; font-size:14px; font-weight:600">+ Nuevo usuario</button>
+    </div>
+
+    <div id="sisList"></div>
+  </main>
+</div>
+
+<!-- Toast container -->
+<div id="toast" style="position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#1A1A1A; color:white; padding:12px 20px; border-radius:8px; font-size:14px; box-shadow:0 4px 12px rgba(0,0,0,0.2); z-index:99999; display:none; max-width:90%; text-align:center"></div>
+
 <script>
 // =======================================================================
 // CONFIG
@@ -236,6 +263,14 @@ a { color: inherit; text-decoration: none; }
 const SUPABASE_URL = 'https://wjfglsafgaltusmbnccl.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndqZmdsc2FmZ2FsdHVzbWJuY2NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0MzM2OTksImV4cCI6MjA4OTAwOTY5OX0.OOwgyKDNQsbBaGDaL0OhJfc8eOsCClvvAPW0VFBKrOA';
 const SESSION_KEY = 'portal_tga_session';
+
+// Quien ve y usa el panel "Sistema" del portal.
+const SUPERADMINS_USUARIOS = ['fngonzalez', 'mlubrano'];
+
+// Sesion vigente en memoria (para gates de UI).
+let currentSession = null;
+// Cache del listado en la vista Sistema.
+let usuariosData = [];
 
 // Cookie compartida con todas las apps de *.titogonzalez.online (SSO).
 const SHARED_COOKIE = 'tga_session';
@@ -373,11 +408,15 @@ function logout() {
 }
 
 function enterApp(session) {
+  currentSession = session;
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('appScreen').classList.remove('hidden');
+  document.getElementById('sistemaScreen').classList.add('hidden');
   const displayName = session.nombre || session.usuario;
   document.getElementById('userName').textContent = displayName;
+  document.getElementById('userNameSis').textContent = displayName;
   document.getElementById('greetName').textContent = (displayName || '').split(' ')[0] || 'vendedor';
+  document.getElementById('btnSistema').style.display = _esSuperadmin() ? '' : 'none';
   renderCards();
 }
 
@@ -402,6 +441,338 @@ function renderCards() {
 
 function openApp(url) {
   window.location.href = url;
+}
+
+// =======================================================================
+// SISTEMA · gestion de usuarios (solo superadmins)
+// =======================================================================
+function _esSuperadmin() {
+  return !!(currentSession && SUPERADMINS_USUARIOS.includes(currentSession.usuario));
+}
+function _getRolesDeUsuario(u) {
+  return (Array.isArray(u.roles) && u.roles.length > 0) ? u.roles : (u.rol ? [u.rol] : ['vendedor']);
+}
+function _esAdmin(u) {
+  return _getRolesDeUsuario(u).includes('admin');
+}
+function _escapeHtmlUsr(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function showToast(msg, ms) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.style.display = '';
+  clearTimeout(showToast._tid);
+  showToast._tid = setTimeout(() => { t.style.display = 'none'; }, ms || 2600);
+}
+
+async function copiarAlPortapapeles(texto, etiqueta) {
+  try {
+    await navigator.clipboard.writeText(texto);
+    showToast((etiqueta || 'Texto') + ' copiado');
+  } catch {
+    prompt('Copialo a mano:', texto);
+  }
+}
+async function copiarClaveUsuario(id) {
+  const u = usuariosData.find(x => String(x.id) === String(id));
+  if (!u || !u.clave) { showToast('Sin clave guardada'); return; }
+  await copiarAlPortapapeles(u.clave, 'Clave');
+}
+
+async function abrirSistema() {
+  if (!_esSuperadmin()) { showToast('No autorizado'); return; }
+  document.getElementById('appScreen').classList.add('hidden');
+  document.getElementById('sistemaScreen').classList.remove('hidden');
+  await loadUsuarios();
+}
+
+function cerrarSistema() {
+  document.getElementById('sistemaScreen').classList.add('hidden');
+  document.getElementById('appScreen').classList.remove('hidden');
+}
+
+async function loadUsuarios() {
+  const list = document.getElementById('sisList');
+  list.innerHTML = '<div style="text-align:center; padding:40px; color:var(--vw-grey-3)">Cargando...</div>';
+  try {
+    const data = await sbFetch('tasador_usuarios?select=id,usuario,nombre,clave,email,telefono_wa,callmebot_key,roles,rol,activo,debe_cambiar_clave&order=usuario.asc');
+    usuariosData = data || [];
+    renderUsuarios();
+  } catch(e) {
+    console.error(e);
+    list.innerHTML = '<div style="text-align:center; padding:40px; color:#c00">Error cargando usuarios: ' + _escapeHtmlUsr(e.message || e) + '</div>';
+  }
+}
+
+function renderUsuarios() {
+  const list = document.getElementById('sisList');
+  if (!usuariosData.length) {
+    list.innerHTML = '<div style="text-align:center; padding:40px; color:var(--vw-grey-3)">Sin usuarios</div>';
+    return;
+  }
+  const rows = usuariosData.map(u => {
+    const roles = _getRolesDeUsuario(u).join(', ');
+    const isAdmin = _esAdmin(u);
+    const activo = u.activo !== false;
+    const idStr = _escapeHtmlUsr(u.id);
+    const claveTxt = u.clave || '';
+    const claveSafe = _escapeHtmlUsr(claveTxt);
+    const rolBadge = isAdmin
+      ? '<span style="font-size:10px; background:var(--vw-blue); color:white; padding:2px 7px; border-radius:10px; font-weight:600">ADMIN</span>'
+      : '<span style="font-size:11px; color:var(--vw-grey-4)">' + _escapeHtmlUsr(roles) + '</span>';
+    const estadoBadge = activo
+      ? '<span style="font-size:11px; color:var(--green)">● Activo</span>'
+      : '<span style="font-size:11px; color:var(--red)">● Inactivo</span>';
+    const cambioClaveBadge = u.debe_cambiar_clave
+      ? '<span style="font-size:11px; color:var(--orange)">⚠ Debe cambiar clave</span>'
+      : '';
+    const claveBlock = claveTxt
+      ? '<div style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--vw-grey-4); font-family:monospace; margin-top:2px">'
+        + '🔑 <span style="background:var(--vw-grey-1); padding:2px 8px; border-radius:4px; user-select:all">' + claveSafe + '</span>'
+        + '<button onclick="copiarClaveUsuario(\'' + idStr + '\')" title="Copiar" style="background:none; border:none; cursor:pointer; padding:2px; color:var(--vw-blue); font-size:13px">📋</button>'
+        + '</div>'
+      : '';
+    const acciones =
+      '<button onclick="abrirEditarUsuario(\'' + idStr + '\')" title="Editar" style="padding:6px 10px; background:var(--vw-grey-1); color:var(--vw-grey-4); border:none; border-radius:6px; cursor:pointer; font-size:12px">✏️</button>'
+      + '<button onclick="abrirResetClave(\'' + idStr + '\')" title="Resetear clave" style="padding:6px 10px; background:var(--vw-blue-light); color:white; border:none; border-radius:6px; cursor:pointer; font-size:12px">🔄</button>'
+      + '<button onclick="toggleActivoUsuario(\'' + idStr + '\', ' + (!activo) + ')" title="' + (activo ? 'Desactivar' : 'Activar') + '" style="padding:6px 10px; background:' + (activo ? '#fee' : '#efe') + '; color:' + (activo ? '#c00' : '#060') + '; border:none; border-radius:6px; cursor:pointer; font-size:12px">' + (activo ? '⏸' : '▶') + '</button>';
+    return '<div style="background:white; border:1px solid var(--vw-grey-2); border-radius:8px; padding:12px 14px; margin-bottom:8px; opacity:' + (activo ? '1' : '0.6') + '; display:flex; align-items:center; gap:12px; flex-wrap:wrap; box-shadow:var(--shadow)">'
+      + '<div style="flex:1; min-width:200px; display:flex; flex-direction:column; gap:4px">'
+      +   '<div style="font-weight:700; font-size:14px; color:var(--vw-blue)">' + _escapeHtmlUsr(u.usuario) + ' <span style="font-weight:400; color:var(--vw-grey-4); font-size:13px">— ' + _escapeHtmlUsr(u.nombre || '') + '</span></div>'
+      +   '<div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center">' + rolBadge + ' ' + estadoBadge + ' ' + cambioClaveBadge + '</div>'
+      +   claveBlock
+      + '</div>'
+      + '<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center">' + acciones + '</div>'
+      + '</div>';
+  }).join('');
+  list.innerHTML = rows;
+}
+
+function validarClaveUsuario(clave) {
+  if (!clave || clave.length < 8) return { ok: false, msg: 'Mínimo 8 caracteres' };
+  if (!/[a-zA-Z]/.test(clave)) return { ok: false, msg: 'Debe incluir al menos una letra' };
+  if (!/[0-9]/.test(clave)) return { ok: false, msg: 'Debe incluir al menos un número' };
+  return { ok: true };
+}
+
+function abrirNuevoUsuario() {
+  if (!_esSuperadmin()) { showToast('No autorizado'); return; }
+  _mostrarUsuarioModal('nuevo', null);
+}
+function abrirEditarUsuario(id) {
+  if (!_esSuperadmin()) { showToast('No autorizado'); return; }
+  const u = usuariosData.find(x => String(x.id) === String(id));
+  if (!u) return;
+  _mostrarUsuarioModal('editar', u);
+}
+function abrirResetClave(id) {
+  if (!_esSuperadmin()) { showToast('No autorizado'); return; }
+  const u = usuariosData.find(x => String(x.id) === String(id));
+  if (!u) return;
+  _mostrarUsuarioModal('reset', u);
+}
+
+function _mostrarUsuarioModal(modo, u) {
+  const titulos = { nuevo: 'Nuevo usuario', editar: 'Editar usuario', reset: 'Resetear clave' };
+  const existente = u || {};
+  const rolesArr = u ? _getRolesDeUsuario(u) : ['vendedor'];
+  const rolActual = rolesArr[0] || 'vendedor';
+
+  const inp = (label, id, value, hint) =>
+    '<label style="display:block; margin-bottom:10px">'
+    + '<div style="font-size:12px; color:var(--vw-grey-4); margin-bottom:3px">' + label + '</div>'
+    + '<input id="' + id + '" type="text" value="' + _escapeHtmlUsr(value || '') + '" style="width:100%; padding:10px; border:1px solid var(--vw-grey-2); border-radius:6px; box-sizing:border-box">'
+    + (hint ? '<div style="font-size:11px; color:var(--vw-grey-3); margin-top:3px">' + hint + '</div>' : '')
+    + '</label>';
+
+  const rolSelect = (sel) =>
+    '<label style="display:block; margin-bottom:10px">'
+    + '<div style="font-size:12px; color:var(--vw-grey-4); margin-bottom:3px">Rol</div>'
+    + '<select id="usrRol" style="width:100%; padding:10px; border:1px solid var(--vw-grey-2); border-radius:6px; box-sizing:border-box">'
+    +   '<option value="vendedor"' + (sel==='vendedor'?' selected':'') + '>Vendedor</option>'
+    +   '<option value="tasador_fisico"' + (sel==='tasador_fisico'?' selected':'') + '>Tasador físico</option>'
+    +   '<option value="admin"' + (sel==='admin'?' selected':'') + '>Administrador</option>'
+    + '</select>'
+    + '</label>';
+
+  let bodyHtml = '';
+  if (modo === 'nuevo') {
+    bodyHtml =
+      inp('Usuario (sin espacios, en minúscula)', 'usrUsuario', '')
+      + inp('Nombre y apellido', 'usrNombre', '')
+      + inp('Clave provisoria (8+, letras y números)', 'usrClave', '', 'El usuario deberá cambiarla en el primer login.')
+      + rolSelect(rolActual)
+      + inp('Email (opcional)', 'usrEmail', '')
+      + inp('Teléfono WhatsApp (opcional, formato 549...)', 'usrTelWA', '')
+      + inp('CallMeBot key (opcional)', 'usrCallmebot', '');
+  } else if (modo === 'editar') {
+    const estActivo = existente.activo !== false;
+    bodyHtml =
+      '<div style="font-size:13px; color:var(--vw-grey-4); margin-bottom:12px; padding:8px; background:var(--vw-grey-1); border-radius:6px"><b>' + _escapeHtmlUsr(existente.usuario) + '</b> — el nombre de usuario no se puede cambiar</div>'
+      + inp('Nombre y apellido', 'usrNombre', existente.nombre || '')
+      + rolSelect(rolActual)
+      + inp('Email', 'usrEmail', existente.email || '')
+      + inp('Teléfono WhatsApp', 'usrTelWA', existente.telefono_wa || '')
+      + inp('CallMeBot key', 'usrCallmebot', existente.callmebot_key || '')
+      + '<label style="display:flex; align-items:center; gap:8px; margin-bottom:10px; padding:10px; background:var(--vw-grey-1); border-radius:6px; cursor:pointer">'
+      +   '<input id="usrActivo" type="checkbox" ' + (estActivo ? 'checked' : '') + ' style="width:18px; height:18px; cursor:pointer">'
+      +   '<span style="font-size:13px"><b>Usuario activo</b> <span style="color:var(--vw-grey-4)">— si lo desmarcás, no podrá entrar a ninguna app</span></span>'
+      + '</label>';
+  } else if (modo === 'reset') {
+    bodyHtml =
+      '<div style="font-size:13px; color:var(--vw-grey-4); margin-bottom:12px; padding:10px; background:#fff7e6; border:1px solid #ffd58a; border-radius:6px">Vas a resetear la clave de <b>' + _escapeHtmlUsr(existente.usuario) + '</b>.<br>El usuario deberá cambiarla en el próximo login.</div>'
+      + inp('Clave provisoria (8+, letras y números)', 'usrClave', '');
+  }
+
+  const idArg = existente.id ? "'" + _escapeHtmlUsr(existente.id) + "'" : 'null';
+  const modal = document.createElement('div');
+  modal.id = 'usuarioModal';
+  modal.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:9999; padding:16px';
+  modal.innerHTML =
+    '<div style="background:white; border-radius:10px; padding:20px; max-width:480px; width:100%; max-height:90vh; overflow-y:auto">'
+    + '<h3 style="margin:0 0 16px 0; color:var(--vw-blue)">' + titulos[modo] + '</h3>'
+    + '<div id="usrError" style="display:none; color:#c00; font-size:13px; margin-bottom:10px; padding:8px; background:#fee; border-radius:6px"></div>'
+    + bodyHtml
+    + '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px; flex-wrap:wrap">'
+    +   '<button onclick="cerrarUsuarioModal()" style="padding:10px 16px; background:var(--vw-grey-1); color:var(--vw-grey-4); border:none; border-radius:6px; cursor:pointer; font-weight:600">Cancelar</button>'
+    +   '<button onclick="guardarUsuarioModal(\'' + modo + '\', ' + idArg + ')" style="padding:10px 16px; background:var(--vw-blue); color:white; border:none; border-radius:6px; cursor:pointer; font-weight:600">Guardar</button>'
+    + '</div>'
+    + '</div>';
+  document.body.appendChild(modal);
+}
+
+function cerrarUsuarioModal() {
+  const m = document.getElementById('usuarioModal');
+  if (m) m.remove();
+}
+function _mostrarErrorUsuario(msg) {
+  const el = document.getElementById('usrError');
+  if (el) { el.textContent = msg; el.style.display = 'block'; }
+}
+
+async function sbWrite(path, opts) {
+  // Como sbFetch siempre parsea JSON, para POST/PATCH/DELETE necesitamos manejarlo aparte.
+  const url = SUPABASE_URL + '/rest/v1/' + path;
+  const headers = Object.assign({
+    'apikey': SUPABASE_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_KEY,
+    'Content-Type': 'application/json',
+    'Prefer': 'return=minimal',
+  }, opts.headers || {});
+  const res = await fetch(url, Object.assign({}, opts, { headers }));
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error('Supabase ' + res.status + ': ' + text);
+  }
+  return true;
+}
+
+async function guardarUsuarioModal(modo, id) {
+  if (!_esSuperadmin()) { showToast('No autorizado'); return; }
+
+  if (modo === 'nuevo') {
+    const usuario = (document.getElementById('usrUsuario').value || '').trim().toLowerCase();
+    const nombre = (document.getElementById('usrNombre').value || '').trim();
+    const clave = (document.getElementById('usrClave').value || '').trim();
+    const rol = document.getElementById('usrRol').value;
+    const email = (document.getElementById('usrEmail').value || '').trim();
+    const telWa = (document.getElementById('usrTelWA').value || '').trim();
+    const callmebot = (document.getElementById('usrCallmebot').value || '').trim();
+
+    if (!usuario) return _mostrarErrorUsuario('Usuario es obligatorio');
+    if (/\s/.test(usuario)) return _mostrarErrorUsuario('El usuario no puede tener espacios');
+    if (!nombre) return _mostrarErrorUsuario('Nombre es obligatorio');
+    const v = validarClaveUsuario(clave);
+    if (!v.ok) return _mostrarErrorUsuario(v.msg);
+    if (usuariosData.some(u => u.usuario === usuario)) return _mostrarErrorUsuario('Ya existe un usuario con ese nombre');
+
+    try {
+      await sbWrite('tasador_usuarios', {
+        method: 'POST',
+        body: JSON.stringify({
+          usuario, nombre, clave,
+          rol, roles: [rol],
+          email: email || null,
+          telefono_wa: telWa || null,
+          callmebot_key: callmebot || null,
+          activo: true,
+          debe_cambiar_clave: true,
+        }),
+      });
+      cerrarUsuarioModal();
+      showToast('Usuario creado');
+      await loadUsuarios();
+    } catch(e) {
+      _mostrarErrorUsuario('Error al crear: ' + (e.message || ''));
+    }
+
+  } else if (modo === 'editar') {
+    const nombre = (document.getElementById('usrNombre').value || '').trim();
+    const rol = document.getElementById('usrRol').value;
+    const email = (document.getElementById('usrEmail').value || '').trim();
+    const telWa = (document.getElementById('usrTelWA').value || '').trim();
+    const callmebot = (document.getElementById('usrCallmebot').value || '').trim();
+    const activo = document.getElementById('usrActivo').checked;
+    if (!nombre) return _mostrarErrorUsuario('Nombre es obligatorio');
+
+    try {
+      await sbWrite('tasador_usuarios?id=eq.' + encodeURIComponent(id), {
+        method: 'PATCH',
+        body: JSON.stringify({
+          nombre,
+          rol, roles: [rol],
+          email: email || null,
+          telefono_wa: telWa || null,
+          callmebot_key: callmebot || null,
+          activo,
+        }),
+      });
+      cerrarUsuarioModal();
+      showToast('Usuario actualizado');
+      await loadUsuarios();
+    } catch(e) {
+      _mostrarErrorUsuario('Error al guardar: ' + (e.message || ''));
+    }
+
+  } else if (modo === 'reset') {
+    const clave = (document.getElementById('usrClave').value || '').trim();
+    const v = validarClaveUsuario(clave);
+    if (!v.ok) return _mostrarErrorUsuario(v.msg);
+
+    try {
+      await sbWrite('tasador_usuarios?id=eq.' + encodeURIComponent(id), {
+        method: 'PATCH',
+        body: JSON.stringify({ clave, debe_cambiar_clave: true }),
+      });
+      cerrarUsuarioModal();
+      showToast('Clave reseteada. Anotala y pasásela al usuario.');
+      await loadUsuarios();
+    } catch(e) {
+      _mostrarErrorUsuario('Error: ' + (e.message || ''));
+    }
+  }
+}
+
+async function toggleActivoUsuario(id, nuevoEstado) {
+  if (!_esSuperadmin()) { showToast('No autorizado'); return; }
+  const u = usuariosData.find(x => String(x.id) === String(id));
+  if (!u) return;
+  const accion = nuevoEstado ? 'activar' : 'desactivar';
+  if (!confirm('¿Seguro que querés ' + accion + ' al usuario "' + u.usuario + '"?')) return;
+  try {
+    await sbWrite('tasador_usuarios?id=eq.' + encodeURIComponent(id), {
+      method: 'PATCH',
+      body: JSON.stringify({ activo: nuevoEstado }),
+    });
+    showToast(nuevoEstado ? 'Usuario activado' : 'Usuario desactivado');
+    await loadUsuarios();
+  } catch(e) {
+    console.error(e);
+    showToast('Error al guardar');
+  }
 }
 
 // =======================================================================
