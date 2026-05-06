@@ -345,6 +345,7 @@ const APPS = [
     icon: '💬',
     color: 'teal',
     badge: 'Beta',
+    requiereRol: 'chat_admin',
   },
 ];
 
@@ -437,7 +438,14 @@ function enterApp(session) {
 
 function renderCards() {
   const grid = document.getElementById('cardGrid');
-  grid.innerHTML = APPS.map(app => {
+  const rolesUsuario = (currentSession && Array.isArray(currentSession.rolesArr))
+    ? currentSession.rolesArr
+    : [];
+  const appsVisibles = APPS.filter(app => {
+    if (!app.requiereRol) return true;
+    return rolesUsuario.includes(app.requiereRol);
+  });
+  grid.innerHTML = appsVisibles.map(app => {
     const host = (() => { try { return new URL(app.url).host; } catch { return ''; } })();
     const isExternal = app.url && app.url !== '#';
     const badge = app.badge ? `<span class="card-badge">${app.badge}</span>` : '';
