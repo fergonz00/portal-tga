@@ -347,6 +347,16 @@ const APPS = [
     badge: 'Beta',
     requiereRol: 'chat_admin',
   },
+  {
+    id: 'saldos',
+    title: 'Compras y Saldos',
+    desc: 'Compras VW mes a mes, saldos de bancos y VW Credit.',
+    url: 'https://saldos.titogonzalez.online',
+    icon: '💰',
+    color: 'green',
+    badge: 'Privado',
+    requiereUsuario: 'fngonzalez',
+  },
 ];
 
 // =======================================================================
@@ -441,7 +451,14 @@ function renderCards() {
   const rolesUsuario = (currentSession && Array.isArray(currentSession.rolesArr))
     ? currentSession.rolesArr
     : [];
+  const usuarioActual = (currentSession && currentSession.usuario) || '';
+  const esImpersonado = !!(currentSession && currentSession._impersonatedBy);
   const appsVisibles = APPS.filter(app => {
+    if (app.requiereUsuario) {
+      if (esImpersonado) return false;
+      const permitidos = Array.isArray(app.requiereUsuario) ? app.requiereUsuario : [app.requiereUsuario];
+      if (!permitidos.includes(usuarioActual)) return false;
+    }
     if (!app.requiereRol) return true;
     return rolesUsuario.includes(app.requiereRol);
   });
