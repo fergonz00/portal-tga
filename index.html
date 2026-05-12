@@ -297,6 +297,9 @@ const SESSION_KEY = 'portal_tga_session';
 
 // Quien ve y usa el panel "Sistema" del portal.
 const SUPERADMINS_USUARIOS = ['fngonzalez', 'mlubrano'];
+// Usuarios "protegidos": nadie puede entrar como ellos via impersonate,
+// salvo que el que impersone ya sea uno de los protegidos.
+const USUARIOS_PROTEGIDOS = ['fngonzalez', 'fgonzalez'];
 
 // Sesion vigente en memoria (para gates de UI).
 let currentSession = null;
@@ -607,7 +610,7 @@ function renderUsuarios() {
         + '</div>'
       : '';
     const esYo = currentSession && String(u.id) === String(currentSession.id);
-    const btnImpers = (activo && !esYo)
+    const btnImpers = (activo && !esYo && _puedeImpersonarA(u.usuario))
       ? '<button onclick="entrarComoUsuario(\'' + idStr + '\')" title="Entrar como este usuario" style="padding:6px 10px; background:#FED7AA; color:#9A3412; border:none; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600">👤→ Entrar como</button>'
       : '';
     const btnEliminar = !esYo
@@ -864,12 +867,22 @@ async function guardarUsuarioModal(modo, id) {
 // =======================================================================
 // IMPERSONATE · entrar como otro usuario (cross-app via cookie compartida)
 // =======================================================================
+function _puedeImpersonarA(usuarioTarget) {
+  if (!_esSuperadmin()) return false;
+  const target = String(usuarioTarget || '').toLowerCase();
+  if (!USUARIOS_PROTEGIDOS.includes(target)) return true;
+  // Es un protegido → sólo otro protegido puede impersonarlo
+  const yo = String((currentSession && currentSession.usuario) || '').toLowerCase();
+  return USUARIOS_PROTEGIDOS.includes(yo);
+}
+
 async function entrarComoUsuario(id) {
   if (!_esSuperadmin()) { showToast('No autorizado'); return; }
   const u = usuariosData.find(x => String(x.id) === String(id));
   if (!u) { showToast('Usuario no encontrado'); return; }
   if (u.activo === false) { showToast('Usuario inactivo'); return; }
   if (currentSession && String(u.id) === String(currentSession.id)) { showToast('Ya sos vos'); return; }
+  if (!_puedeImpersonarA(u.usuario)) { showToast('No autorizado a entrar como este usuario'); return; }
   if (!confirm('Entrar como "' + u.usuario + '"' + (u.nombre ? ' (' + u.nombre + ')' : '') + '?\n\nVas a navegar como ese usuario en TODAS las apps hasta que vuelvas a tu sesión.')) return;
 
   // Si ya estaba impersonando, conservo al original (no apilamos sesiones).
