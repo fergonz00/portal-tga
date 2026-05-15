@@ -297,9 +297,11 @@ const SESSION_KEY = 'portal_tga_session';
 
 // Quien ve y usa el panel "Sistema" del portal.
 const SUPERADMINS_USUARIOS = ['fngonzalez', 'mlubrano'];
-// Usuarios "protegidos": nadie puede entrar como ellos via impersonate,
-// salvo que el que impersone ya sea uno de los protegidos.
-const USUARIOS_PROTEGIDOS = ['fngonzalez', 'fgonzalez'];
+// Usuarios "protegidos": invisibles e intocables (editar / reset clave /
+// activar / eliminar / impersonar) para todos los superadmins, EXCEPTO
+// para el dueño (USUARIO_OWNER). Sólo el owner puede operar sobre ellos.
+const USUARIOS_PROTEGIDOS = ['fngonzalez', 'fgonzalez', 'cgonzalez'];
+const USUARIO_OWNER = 'fngonzalez';
 
 // Sesion vigente en memoria (para gates de UI).
 let currentSession = null;
@@ -533,6 +535,18 @@ function openApp(url) {
 function _esSuperadmin() {
   return !!(currentSession && SUPERADMINS_USUARIOS.includes(currentSession.usuario));
 }
+function _esOwner() {
+  return !!(currentSession && String(currentSession.usuario || '').toLowerCase() === USUARIO_OWNER);
+}
+function _esUsuarioProtegido(usr) {
+  return USUARIOS_PROTEGIDOS.includes(String(usr || '').toLowerCase());
+}
+// Gate central: ¿puede el operador actual tocar este usuario?
+function _puedeOperarSobre(usr) {
+  if (!_esSuperadmin()) return false;
+  if (_esUsuarioProtegido(usr) && !_esOwner()) return false;
+  return true;
+}
 function _getRolesDeUsuario(u) {
   return (Array.isArray(u.roles) && u.roles.length > 0) ? u.roles : (u.rol ? [u.rol] : ['vendedor']);
 }
@@ -560,12 +574,6 @@ async function copiarAlPortapapeles(texto, etiqueta) {
     prompt('Copialo a mano:', texto);
   }
 }
-async function copiarClaveUsuario(id) {
-  const u = usuariosData.find(x => String(x.id) === String(id));
-  if (!u || !u.clave) { showToast('Sin clave guardada'); return; }
-  await copiarAlPortapapeles(u.clave, 'Clave');
-}
-
 async function abrirSistema() {
   if (!_esSuperadmin()) { showToast('No autorizado'); return; }
   document.getElementById('appScreen').classList.add('hidden');
@@ -582,8 +590,12 @@ async function loadUsuarios() {
   const list = document.getElementById('sisList');
   list.innerHTML = '<div style="text-align:center; padding:40px; color:var(--vw-grey-3)">Cargando...</div>';
   try {
-    const data = await sbFetch('tasador_usuarios?select=id,usuario,nombre,clave,email,telefono_wa,callmebot_key,roles,rol,activo,debe_cambiar_clave&order=usuario.asc');
-    usuariosData = data || [];
+    // `clave` NUNCA se trae del backend para que no quede ni en el JSON.
+    const data = await sbFetch('tasador_usuarios?select=id,usuario,nombre,email,telefono_wa,callmebot_key,roles,rol,activo,debe_cambiar_clave&order=usuario.asc');
+    let arr = data || [];
+    // Las cuentas protegidas son invisibles si el operador no es el owner.
+    if (!_esOwner()) arr = arr.filter(u => !_esUsuarioProtegido(u.usuario));
+    usuariosData = arr;
     renderUsuarios();
   } catch(e) {
     console.error(e);
@@ -602,8 +614,6 @@ function renderUsuarios() {
     const isAdmin = _esAdmin(u);
     const activo = u.activo !== false;
     const idStr = _escapeHtmlUsr(u.id);
-    const claveTxt = u.clave || '';
-    const claveSafe = _escapeHtmlUsr(claveTxt);
     const rolBadge = isAdmin
       ? '<span style="font-size:10px; background:var(--vw-blue); color:white; padding:2px 7px; border-radius:10px; font-weight:600">ADMIN</span>'
       : '<span style="font-size:11px; color:var(--vw-grey-4)">' + _escapeHtmlUsr(roles) + '</span>';
@@ -613,30 +623,25 @@ function renderUsuarios() {
     const cambioClaveBadge = u.debe_cambiar_clave
       ? '<span style="font-size:11px; color:var(--orange)">⚠ Debe cambiar clave</span>'
       : '';
-    const claveBlock = claveTxt
-      ? '<div style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--vw-grey-4); font-family:monospace; margin-top:2px">'
-        + '🔑 <span style="background:var(--vw-grey-1); padding:2px 8px; border-radius:4px; user-select:all">' + claveSafe + '</span>'
-        + '<button onclick="copiarClaveUsuario(\'' + idStr + '\')" title="Copiar" style="background:none; border:none; cursor:pointer; padding:2px; color:var(--vw-blue); font-size:13px">📋</button>'
-        + '</div>'
-      : '';
     const esYo = currentSession && String(u.id) === String(currentSession.id);
+    const puedeOperar = _puedeOperarSobre(u.usuario);
     const btnImpers = (activo && !esYo && _puedeImpersonarA(u.usuario))
       ? '<button onclick="entrarComoUsuario(\'' + idStr + '\')" title="Entrar como este usuario" style="padding:6px 10px; background:#FED7AA; color:#9A3412; border:none; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600">👤→ Entrar como</button>'
       : '';
-    const btnEliminar = !esYo
+    const btnEliminar = (!esYo && puedeOperar)
       ? '<button onclick="eliminarUsuario(\'' + idStr + '\')" title="Eliminar definitivamente" style="padding:6px 10px; background:#fee; color:#c00; border:1px solid #fcc; border-radius:6px; cursor:pointer; font-size:12px">🗑</button>'
       : '';
-    const acciones =
-      '<button onclick="abrirEditarUsuario(\'' + idStr + '\')" title="Editar" style="padding:6px 10px; background:var(--vw-grey-1); color:var(--vw-grey-4); border:none; border-radius:6px; cursor:pointer; font-size:12px">✏️</button>'
-      + '<button onclick="abrirResetClave(\'' + idStr + '\')" title="Resetear clave" style="padding:6px 10px; background:var(--vw-blue-light); color:white; border:none; border-radius:6px; cursor:pointer; font-size:12px">🔄</button>'
-      + '<button onclick="toggleActivoUsuario(\'' + idStr + '\', ' + (!activo) + ')" title="' + (activo ? 'Desactivar' : 'Activar') + '" style="padding:6px 10px; background:' + (activo ? '#fee' : '#efe') + '; color:' + (activo ? '#c00' : '#060') + '; border:none; border-radius:6px; cursor:pointer; font-size:12px">' + (activo ? '⏸' : '▶') + '</button>'
-      + btnImpers
-      + btnEliminar;
+    const acciones = puedeOperar
+      ? '<button onclick="abrirEditarUsuario(\'' + idStr + '\')" title="Editar" style="padding:6px 10px; background:var(--vw-grey-1); color:var(--vw-grey-4); border:none; border-radius:6px; cursor:pointer; font-size:12px">✏️</button>'
+        + '<button onclick="abrirResetClave(\'' + idStr + '\')" title="Resetear clave" style="padding:6px 10px; background:var(--vw-blue-light); color:white; border:none; border-radius:6px; cursor:pointer; font-size:12px">🔄</button>'
+        + '<button onclick="toggleActivoUsuario(\'' + idStr + '\', ' + (!activo) + ')" title="' + (activo ? 'Desactivar' : 'Activar') + '" style="padding:6px 10px; background:' + (activo ? '#fee' : '#efe') + '; color:' + (activo ? '#c00' : '#060') + '; border:none; border-radius:6px; cursor:pointer; font-size:12px">' + (activo ? '⏸' : '▶') + '</button>'
+        + btnImpers
+        + btnEliminar
+      : '<span style="font-size:11px; color:var(--vw-grey-3); font-style:italic">cuenta protegida</span>';
     return '<div style="background:white; border:1px solid var(--vw-grey-2); border-radius:8px; padding:12px 14px; margin-bottom:8px; opacity:' + (activo ? '1' : '0.6') + '; display:flex; align-items:center; gap:12px; flex-wrap:wrap; box-shadow:var(--shadow)">'
       + '<div style="flex:1; min-width:200px; display:flex; flex-direction:column; gap:4px">'
       +   '<div style="font-weight:700; font-size:14px; color:var(--vw-blue)">' + _escapeHtmlUsr(u.usuario) + ' <span style="font-weight:400; color:var(--vw-grey-4); font-size:13px">— ' + _escapeHtmlUsr(u.nombre || '') + '</span></div>'
       +   '<div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center">' + rolBadge + ' ' + estadoBadge + ' ' + cambioClaveBadge + '</div>'
-      +   claveBlock
       + '</div>'
       + '<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center">' + acciones + '</div>'
       + '</div>';
@@ -659,12 +664,14 @@ function abrirEditarUsuario(id) {
   if (!_esSuperadmin()) { showToast('No autorizado'); return; }
   const u = usuariosData.find(x => String(x.id) === String(id));
   if (!u) return;
+  if (!_puedeOperarSobre(u.usuario)) { showToast('Cuenta protegida'); return; }
   _mostrarUsuarioModal('editar', u);
 }
 function abrirResetClave(id) {
   if (!_esSuperadmin()) { showToast('No autorizado'); return; }
   const u = usuariosData.find(x => String(x.id) === String(id));
   if (!u) return;
+  if (!_puedeOperarSobre(u.usuario)) { showToast('Cuenta protegida'); return; }
   _mostrarUsuarioModal('reset', u);
 }
 
@@ -783,6 +790,10 @@ async function sbWrite(path, opts) {
 
 async function guardarUsuarioModal(modo, id) {
   if (!_esSuperadmin()) { showToast('No autorizado'); return; }
+  if ((modo === 'editar' || modo === 'reset') && id) {
+    const target = usuariosData.find(x => String(x.id) === String(id));
+    if (target && !_puedeOperarSobre(target.usuario)) { showToast('Cuenta protegida'); return; }
+  }
 
   function leerRolesSeleccionados() {
     const cbs = document.querySelectorAll('input[name="usrRolMulti"]:checked');
@@ -791,6 +802,7 @@ async function guardarUsuarioModal(modo, id) {
 
   if (modo === 'nuevo') {
     const usuario = (document.getElementById('usrUsuario').value || '').trim().toLowerCase();
+    if (_esUsuarioProtegido(usuario) && !_esOwner()) return _mostrarErrorUsuario('Ese nombre de usuario está reservado');
     const nombre = (document.getElementById('usrNombre').value || '').trim();
     const clave = (document.getElementById('usrClave').value || '').trim();
     const rolesSel = leerRolesSeleccionados();
@@ -879,11 +891,10 @@ async function guardarUsuarioModal(modo, id) {
 // =======================================================================
 function _puedeImpersonarA(usuarioTarget) {
   if (!_esSuperadmin()) return false;
-  const target = String(usuarioTarget || '').toLowerCase();
-  if (!USUARIOS_PROTEGIDOS.includes(target)) return true;
-  // Es un protegido → sólo otro protegido puede impersonarlo
-  const yo = String((currentSession && currentSession.usuario) || '').toLowerCase();
-  return USUARIOS_PROTEGIDOS.includes(yo);
+  // Cuentas protegidas: sólo el owner puede impersonarlas. El resto, ni
+  // siquiera otros superadmins.
+  if (_esUsuarioProtegido(usuarioTarget)) return _esOwner();
+  return true;
 }
 
 async function entrarComoUsuario(id) {
@@ -956,6 +967,7 @@ async function toggleActivoUsuario(id, nuevoEstado) {
   if (!_esSuperadmin()) { showToast('No autorizado'); return; }
   const u = usuariosData.find(x => String(x.id) === String(id));
   if (!u) return;
+  if (!_puedeOperarSobre(u.usuario)) { showToast('Cuenta protegida'); return; }
   const accion = nuevoEstado ? 'activar' : 'desactivar';
   if (!confirm('¿Seguro que querés ' + accion + ' al usuario "' + u.usuario + '"?')) return;
   try {
@@ -975,6 +987,7 @@ async function eliminarUsuario(id) {
   if (!_esSuperadmin()) { showToast('No autorizado'); return; }
   const u = usuariosData.find(x => String(x.id) === String(id));
   if (!u) return;
+  if (!_puedeOperarSobre(u.usuario)) { showToast('Cuenta protegida'); return; }
   if (currentSession && String(u.id) === String(currentSession.id)) {
     showToast('No te podés eliminar a vos mismo');
     return;
