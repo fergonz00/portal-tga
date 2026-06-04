@@ -302,6 +302,10 @@ const SUPERADMINS_USUARIOS = ['fngonzalez', 'mlubrano'];
 // para el dueño (USUARIO_OWNER). Sólo el owner puede operar sobre ellos.
 const USUARIOS_PROTEGIDOS = ['fngonzalez', 'fgonzalez', 'cgonzalez'];
 const USUARIO_OWNER = 'fngonzalez';
+// Usuarios que SOLO ven las apps habilitadas explícitamente para ellos
+// (via requiereUsuario) y NO las apps abiertas a todos. Ej: 'admincampo'
+// (Valeria) solo ve la tarjeta Campo, ninguna otra del ecosistema.
+const USUARIOS_SOLO_SU_TARJETA = ['admincampo'];
 
 // Sesion vigente en memoria (para gates de UI).
 let currentSession = null;
@@ -509,7 +513,15 @@ function renderCards() {
     : [];
   const usuarioActual = (currentSession && currentSession.usuario) || '';
   const esImpersonado = !!(currentSession && currentSession._impersonatedBy);
+  // Usuarios restringidos: SOLO ven las apps donde están en requiereUsuario.
+  const soloSuTarjeta = USUARIOS_SOLO_SU_TARJETA.includes(usuarioActual);
   const appsVisibles = APPS.filter(app => {
+    if (soloSuTarjeta) {
+      const permitidos = Array.isArray(app.requiereUsuario)
+        ? app.requiereUsuario
+        : (app.requiereUsuario ? [app.requiereUsuario] : []);
+      return permitidos.includes(usuarioActual);
+    }
     if (app.requiereUsuario) {
       if (esImpersonado) return false;
       const permitidos = Array.isArray(app.requiereUsuario) ? app.requiereUsuario : [app.requiereUsuario];
