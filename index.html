@@ -523,7 +523,8 @@ function renderCards() {
       return permitidos.includes(usuarioActual);
     }
     if (app.requiereUsuario) {
-      if (esImpersonado) return false;
+      // Impersonar muestra lo que ve el usuario impersonado (es el punto de la
+      // función): se filtra por el usuario actual, sea real o impersonado.
       const permitidos = Array.isArray(app.requiereUsuario) ? app.requiereUsuario : [app.requiereUsuario];
       if (!permitidos.includes(usuarioActual)) return false;
     }
