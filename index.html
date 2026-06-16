@@ -302,6 +302,10 @@ const SUPERADMINS_USUARIOS = ['fngonzalez', 'mlubrano'];
 // para el dueño (USUARIO_OWNER). Sólo el owner puede operar sobre ellos.
 const USUARIOS_PROTEGIDOS = ['fngonzalez', 'fgonzalez', 'cgonzalez'];
 const USUARIO_OWNER = 'fngonzalez';
+// Usuarios que SOLO el owner puede impersonar (siguen visibles/editables en el
+// panel, pero "entrar como" queda reservado al owner). Ej: marianom da acceso a
+// Compras y Saldos, sensible — Matías no debe poder entrar como él.
+const IMPERSONAR_SOLO_OWNER = ['marianom'];
 // Usuarios que SOLO ven las apps habilitadas explícitamente para ellos
 // (via requiereUsuario) y NO las apps abiertas a todos. Ej: 'admincampo'
 // (Valeria) solo ve la tarjeta Campo, ninguna otra del ecosistema.
@@ -917,6 +921,8 @@ function _puedeImpersonarA(usuarioTarget) {
   // Cuentas protegidas: sólo el owner puede impersonarlas. El resto, ni
   // siquiera otros superadmins.
   if (_esUsuarioProtegido(usuarioTarget)) return _esOwner();
+  // Usuarios reservados al owner para impersonar (acceso a apps sensibles).
+  if (IMPERSONAR_SOLO_OWNER.includes(String(usuarioTarget || '').toLowerCase())) return _esOwner();
   return true;
 }
 
