@@ -157,6 +157,7 @@ a { color: inherit; text-decoration: none; }
 .app-card.color-red .card-icon { background: var(--red); }
 .app-card.color-purple .card-icon { background: #7C3AED; }
 .app-card.color-teal .card-icon { background: #0D9488; }
+.app-card.color-grey .card-icon { background: var(--vw-grey-4); }
 .app-card .card-title {
   font-size: 16px; font-weight: 600;
   color: var(--vw-black);
@@ -310,6 +311,10 @@ const IMPERSONAR_SOLO_OWNER = ['marianom'];
 // (via requiereUsuario) y NO las apps abiertas a todos. Ej: 'admincampo'
 // (Valeria) solo ve la tarjeta Campo, ninguna otra del ecosistema.
 const USUARIOS_SOLO_SU_TARJETA = ['admincampo', 'isaybode', 'marianom'];
+// Apps agrupadas bajo la tarjeta "Otros": solo las ven estos usuarios (y de
+// ellos, cada uno solo las que le correspondan por rol). El resto del equipo
+// no ve ni la tarjeta "Otros" ni esas apps.
+const OTROS_USUARIOS = ['fngonzalez', 'fgonzalez', 'cgonzalez'];
 
 // Sesion vigente en memoria (para gates de UI).
 let currentSession = null;
@@ -371,6 +376,8 @@ const APPS = [
     icon: 'F',
     color: 'purple',
     badge: 'Login propio',
+    group: 'otros',
+    requiereUsuario: OTROS_USUARIOS,
   },
   {
     id: 'crm',
@@ -380,6 +387,8 @@ const APPS = [
     icon: 'C',
     color: 'red',
     badge: 'Login propio',
+    group: 'otros',
+    requiereUsuario: OTROS_USUARIOS,
   },
   {
     id: 'chat',
@@ -389,6 +398,8 @@ const APPS = [
     icon: '💬',
     color: 'teal',
     badge: 'Beta',
+    group: 'otros',
+    requiereUsuario: OTROS_USUARIOS,
     requiereRol: 'chat_admin',
   },
   {
@@ -510,16 +521,16 @@ function enterApp(session) {
   _renderImpersonateBanner();
 }
 
-function renderCards() {
-  const grid = document.getElementById('cardGrid');
+// Apps visibles para la sesión actual (real o impersonada), respetando
+// requiereUsuario / requiereRol. No discrimina grupo: filtra acá, agrupá después.
+function _computeAppsVisibles() {
   const rolesUsuario = (currentSession && Array.isArray(currentSession.rolesArr))
     ? currentSession.rolesArr
     : [];
   const usuarioActual = (currentSession && currentSession.usuario) || '';
-  const esImpersonado = !!(currentSession && currentSession._impersonatedBy);
   // Usuarios restringidos: SOLO ven las apps donde están en requiereUsuario.
   const soloSuTarjeta = USUARIOS_SOLO_SU_TARJETA.includes(usuarioActual);
-  const appsVisibles = APPS.filter(app => {
+  return APPS.filter(app => {
     if (soloSuTarjeta) {
       const permitidos = Array.isArray(app.requiereUsuario)
         ? app.requiereUsuario
@@ -535,12 +546,14 @@ function renderCards() {
     if (!app.requiereRol) return true;
     return rolesUsuario.includes(app.requiereRol);
   });
-  grid.innerHTML = appsVisibles.map(app => {
-    const host = (() => { try { return new URL(app.url).host; } catch { return ''; } })();
-    const isExternal = app.url && app.url !== '#';
-    const badge = app.badge ? `<span class="card-badge">${app.badge}</span>` : '';
-    const onClick = isExternal ? `onclick="openApp('${app.url}')"` : 'onclick="alert(\'Próximamente\')"';
-    return `
+}
+
+function _appCardHtml(app) {
+  const host = (() => { try { return new URL(app.url).host; } catch { return ''; } })();
+  const isExternal = app.url && app.url !== '#';
+  const badge = app.badge ? `<span class="card-badge">${app.badge}</span>` : '';
+  const onClick = isExternal ? `onclick="openApp('${app.url}')"` : 'onclick="alert(\'Próximamente\')"';
+  return `
       <div class="app-card color-${app.color}" ${onClick}>
         ${badge}
         <div class="card-icon">${app.icon}</div>
@@ -549,7 +562,36 @@ function renderCards() {
         <div class="card-host">${host || '—'}</div>
       </div>
     `;
-  }).join('');
+}
+
+function renderCards() {
+  const grid = document.getElementById('cardGrid');
+  const visibles = _computeAppsVisibles();
+  const principales = visibles.filter(app => app.group !== 'otros');
+  const otros = visibles.filter(app => app.group === 'otros');
+  let html = principales.map(_appCardHtml).join('');
+  // La tarjeta "Otros" solo aparece si el usuario tiene al menos una app adentro.
+  if (otros.length) {
+    html += `
+      <div class="app-card color-grey" onclick="abrirOtros()">
+        <div class="card-icon">⋯</div>
+        <div class="card-title">Otros</div>
+        <div class="card-desc">${otros.map(a => a.title).join(', ')}.</div>
+        <div class="card-host">${otros.length} ${otros.length === 1 ? 'app' : 'apps'}</div>
+      </div>
+    `;
+  }
+  grid.innerHTML = html;
+}
+
+// Sub-vista del grupo "Otros": reemplaza la grilla por las apps agrupadas + un
+// botón para volver. No hay navegación de pantalla, es la misma grilla.
+function abrirOtros() {
+  const grid = document.getElementById('cardGrid');
+  const otros = _computeAppsVisibles().filter(app => app.group === 'otros');
+  if (!otros.length) { renderCards(); return; }
+  const back = '<div onclick="renderCards()" style="grid-column:1/-1; display:flex; align-items:center; gap:8px; cursor:pointer; color:var(--vw-blue); font-weight:600; font-size:14px; margin-bottom:4px">← Volver</div>';
+  grid.innerHTML = back + otros.map(_appCardHtml).join('');
 }
 
 function openApp(url) {
