@@ -311,9 +311,10 @@ const IMPERSONAR_SOLO_OWNER = ['marianom'];
 // (via requiereUsuario) y NO las apps abiertas a todos. Ej: 'admincampo'
 // (Valeria) solo ve la tarjeta Campo, ninguna otra del ecosistema.
 const USUARIOS_SOLO_SU_TARJETA = ['admincampo', 'isaybode', 'marianom'];
-// Apps agrupadas bajo la tarjeta "Otros": solo las ven estos usuarios (y de
-// ellos, cada uno solo las que le correspondan por rol). El resto del equipo
-// no ve ni la tarjeta "Otros" ni esas apps.
+// Usuarios para los que las apps con group:'otros' se agrupan bajo la tarjeta
+// "Otros" (sub-vista). Es SOLO una agrupación visual: el resto del equipo sigue
+// viendo esas apps sueltas en la grilla, según lo que le permita su rol. No saca
+// acceso a nadie — quien ya entraba a Formularios/CRM lo sigue viendo.
 const OTROS_USUARIOS = ['fngonzalez', 'fgonzalez', 'cgonzalez'];
 
 // Sesion vigente en memoria (para gates de UI).
@@ -377,7 +378,6 @@ const APPS = [
     color: 'purple',
     badge: 'Login propio',
     group: 'otros',
-    requiereUsuario: OTROS_USUARIOS,
   },
   {
     id: 'crm',
@@ -388,7 +388,6 @@ const APPS = [
     color: 'red',
     badge: 'Login propio',
     group: 'otros',
-    requiereUsuario: OTROS_USUARIOS,
   },
   {
     id: 'chat',
@@ -399,7 +398,6 @@ const APPS = [
     color: 'teal',
     badge: 'Beta',
     group: 'otros',
-    requiereUsuario: OTROS_USUARIOS,
     requiereRol: 'chat_admin',
   },
   {
@@ -567,8 +565,12 @@ function _appCardHtml(app) {
 function renderCards() {
   const grid = document.getElementById('cardGrid');
   const visibles = _computeAppsVisibles();
-  const principales = visibles.filter(app => app.group !== 'otros');
-  const otros = visibles.filter(app => app.group === 'otros');
+  // El agrupamiento bajo "Otros" es solo para los admins (OTROS_USUARIOS). Para
+  // el resto del equipo esas apps van sueltas en la grilla, como siempre.
+  const usuarioActual = (currentSession && currentSession.usuario) || '';
+  const agrupaOtros = OTROS_USUARIOS.includes(usuarioActual);
+  const principales = visibles.filter(app => !(agrupaOtros && app.group === 'otros'));
+  const otros = agrupaOtros ? visibles.filter(app => app.group === 'otros') : [];
   let html = principales.map(_appCardHtml).join('');
   // La tarjeta "Otros" solo aparece si el usuario tiene al menos una app adentro.
   if (otros.length) {
