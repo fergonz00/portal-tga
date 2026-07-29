@@ -296,13 +296,14 @@ const SUPABASE_URL = 'https://wjfglsafgaltusmbnccl.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndqZmdsc2FmZ2FsdHVzbWJuY2NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0MzM2OTksImV4cCI6MjA4OTAwOTY5OX0.OOwgyKDNQsbBaGDaL0OhJfc8eOsCClvvAPW0VFBKrOA';
 const SESSION_KEY = 'portal_tga_session';
 
+// Los tres dueños. Tienen exactamente los mismos permisos entre sí.
+const DUENIOS_USUARIOS = ['fngonzalez', 'fgonzalez', 'cgonzalez'];
 // Quien ve y usa el panel "Sistema" del portal.
-const SUPERADMINS_USUARIOS = ['fngonzalez', 'mlubrano'];
+const SUPERADMINS_USUARIOS = [...DUENIOS_USUARIOS, 'mlubrano'];
 // Usuarios "protegidos": invisibles e intocables (editar / reset clave /
 // activar / eliminar / impersonar) para todos los superadmins, EXCEPTO
-// para el dueño (USUARIO_OWNER). Sólo el owner puede operar sobre ellos.
-const USUARIOS_PROTEGIDOS = ['fngonzalez', 'fgonzalez', 'cgonzalez'];
-const USUARIO_OWNER = 'fngonzalez';
+// para los dueños. Sólo ellos pueden operar sobre los protegidos.
+const USUARIOS_PROTEGIDOS = DUENIOS_USUARIOS;
 // Usuarios que SOLO el owner puede impersonar (siguen visibles/editables en el
 // panel, pero "entrar como" queda reservado al owner). Ej: marianom da acceso a
 // Compras y Saldos, sensible — Matías no debe poder entrar como él.
@@ -408,7 +409,7 @@ const APPS = [
     icon: '💰',
     color: 'green',
     badge: 'Privado',
-    requiereUsuario: ['fngonzalez', 'fgonzalez', 'marianom'],
+    requiereUsuario: ['fngonzalez', 'fgonzalez', 'cgonzalez', 'marianom'],
   },
   {
     id: 'gestion',
@@ -618,7 +619,7 @@ function _esSuperadmin() {
   return !!(currentSession && SUPERADMINS_USUARIOS.includes(currentSession.usuario));
 }
 function _esOwner() {
-  return !!(currentSession && String(currentSession.usuario || '').toLowerCase() === USUARIO_OWNER);
+  return !!(currentSession && DUENIOS_USUARIOS.includes(String(currentSession.usuario || '').toLowerCase()));
 }
 function _esUsuarioProtegido(usr) {
   return USUARIOS_PROTEGIDOS.includes(String(usr || '').toLowerCase());
