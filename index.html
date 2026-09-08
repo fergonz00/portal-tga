@@ -434,12 +434,15 @@ const APPS = [
   {
     id: 'calidad',
     title: 'Calidad',
-    desc: 'Encuesta al cliente despues de la entrega: puntajes, quejas y quien atendio.',
+    desc: 'Encuesta al cliente despues de la entrega: alertas, problemas y quien atendio.',
     url: 'https://calidad.titogonzalez.online',
     icon: 'Q',
     color: 'teal',
     badge: 'Privado',
-    requiereUsuario: ['fngonzalez', 'fgonzalez', 'cgonzalez'],
+    // marianom es vendedor y solo ve las tarjetas habilitadas para el: esta
+    // linea es lo unico que le muestra Calidad. Ojo: es la calidad de VENTAS.
+    // Cuando se sume POSTVENTA, esa va aparte y el no la ve.
+    requiereUsuario: ['fngonzalez', 'fgonzalez', 'cgonzalez', 'marianom'],
   },
   {
     id: 'campo',
