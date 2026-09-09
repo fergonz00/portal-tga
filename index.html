@@ -311,7 +311,7 @@ const IMPERSONAR_SOLO_OWNER = ['marianom'];
 // Usuarios que SOLO ven las apps habilitadas explícitamente para ellos
 // (via requiereUsuario) y NO las apps abiertas a todos. Ej: 'admincampo'
 // (Valeria) solo ve la tarjeta Campo, ninguna otra del ecosistema.
-const USUARIOS_SOLO_SU_TARJETA = ['admincampo', 'isaybode', 'marianom', 'mlopez'];
+const USUARIOS_SOLO_SU_TARJETA = ['admincampo', 'isaybode', 'marianom', 'mlopez', 'mlbitz'];
 // Usuarios para los que las apps con group:'otros' se agrupan bajo la tarjeta
 // "Otros" (sub-vista). Es SOLO una agrupación visual: el resto del equipo sigue
 // viendo esas apps sueltas en la grilla, según lo que le permita su rol. No saca
@@ -439,10 +439,12 @@ const APPS = [
     icon: 'Q',
     color: 'teal',
     badge: 'Privado',
-    // marianom es vendedor y solo ve las tarjetas habilitadas para el: esta
-    // linea es lo unico que le muestra Calidad. Ojo: es la calidad de VENTAS.
-    // Cuando se sume POSTVENTA, esa va aparte y el no la ve.
-    requiereUsuario: ['fngonzalez', 'fgonzalez', 'cgonzalez', 'marianom'],
+    // Quien entra a la tarjeta ve solo lo que le corresponde: la pantalla de
+    // Calidad pregunta al API que solapas tiene habilitadas y esconde el resto.
+    // mlopez (gerente de Postventa), mlbitz y marianom ven SOLO Postventa;
+    // los duenios ven Ventas y Postventa.
+    requiereUsuario: ['fngonzalez', 'fgonzalez', 'cgonzalez', 'marianom',
+                      'mlopez', 'mlbitz'],
   },
   {
     id: 'campo',
