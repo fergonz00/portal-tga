@@ -502,6 +502,17 @@ const APPS = [
     // Cobranzas: Mati y Fer + las administrativas que cargan (Valeria y Nadia).
     requiereUsuario: ['mlubrano', 'fngonzalez', 'vreyna', 'nvera'],
   },
+  {
+    id: 'patentamiento',
+    title: 'Control de Patentamiento',
+    desc: 'Compara lo cobrado en la preventa (Arancel 1% y Sellado) contra el recibo del registro y el SUATS.',
+    url: 'https://administracion.titogonzalez.online/control-patentamiento',
+    icon: '🚗',
+    color: 'green',
+    badge: 'Privado',
+    // Misma lista que Comprobantes: comparten la API, que ya filtra por estos usuarios.
+    requiereUsuario: ['mlubrano', 'fngonzalez', 'vreyna', 'nvera'],
+  },
 ];
 
 // =======================================================================
