@@ -492,26 +492,18 @@ const APPS = [
     requiereUsuario: ['mlubrano', 'fngonzalez', 'cgonzalez', 'fgonzalez', 'mlopez'],
   },
   {
-    id: 'comprobantes',
-    title: 'Control de Comprobantes',
-    desc: 'Los comprobantes de pago de cada preventa, por vendedor. Reemplaza el Excel CONTROL PAGOS PV.',
-    url: 'https://administracion.titogonzalez.online/control-comprobante',
-    icon: '🧾',
+    id: 'controles',
+    title: 'Administración Controles',
+    desc: 'Control de Comprobantes y Control de Patentamiento. Cada usuario ve los que tiene habilitados.',
+    url: 'https://administracion.titogonzalez.online/controles',
+    icon: '🗂️',
     color: 'green',
     badge: 'Privado',
-    // Cobranzas: Mati y Fer + las administrativas que cargan (Valeria y Nadia).
-    requiereUsuario: ['mlubrano', 'fngonzalez', 'vreyna', 'nvera'],
-  },
-  {
-    id: 'patentamiento',
-    title: 'Control de Patentamiento',
-    desc: 'Compara lo cobrado en la preventa (Arancel 1% y Sellado) contra el recibo del registro y el SUATS.',
-    url: 'https://administracion.titogonzalez.online/control-patentamiento',
-    icon: '🚗',
-    color: 'green',
-    badge: 'Privado',
-    // Misma lista que Comprobantes: comparten la API, que ya filtra por estos usuarios.
-    requiereUsuario: ['mlubrano', 'fngonzalez', 'vreyna', 'nvera'],
+    // Todos los que tienen AL MENOS un control. Qué ve y qué puede hacer cada uno
+    // lo decide el servidor (comprobantes-tga, lib/sso.js):
+    //   Comprobantes:  mlubrano, fngonzalez (total) · vreyna, nvera
+    //   Patentamiento: mlubrano, fngonzalez (total) · nvera (carga) · vreyna, mgerez, dlopez (lectura)
+    requiereUsuario: ['mlubrano', 'fngonzalez', 'vreyna', 'nvera', 'mgerez', 'dlopez'],
   },
 ];
 
