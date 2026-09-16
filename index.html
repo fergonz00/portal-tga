@@ -968,16 +968,17 @@ async function guardarUsuarioModal(modo, id) {
     if (usuariosData.some(u => u.usuario === usuario)) return _mostrarErrorUsuario('Ya existe un usuario con ese nombre');
 
     try {
-      await sbWrite('tasador_usuarios', {
+      // Alta via funcion de servidor: guarda la clave HASHEADA en la tabla cerrada
+      // y verifica que quien la llama sea superadmin (sesion firmada). No escribe texto plano.
+      await sbFetch('rpc/alta_usuario', {
         method: 'POST',
         body: JSON.stringify({
-          usuario, nombre, clave,
-          rol: rolesSel[0], roles: rolesSel,
-          email: email || null,
-          telefono_wa: telWa || null,
-          callmebot_key: callmebot || null,
-          activo: true,
-          debe_cambiar_clave: true,
+          p_actor: currentSession.usuario,
+          p_actor_exp: currentSession.session_exp,
+          p_actor_sig: currentSession.session_sig,
+          p_usuario: usuario, p_nombre: nombre, p_clave: clave,
+          p_rol: rolesSel[0], p_roles: rolesSel,
+          p_email: email || null, p_tel: telWa || null, p_callmebot: callmebot || null,
         }),
       });
       cerrarUsuarioModal();
@@ -1022,9 +1023,15 @@ async function guardarUsuarioModal(modo, id) {
     if (!v.ok) return _mostrarErrorUsuario(v.msg);
 
     try {
-      await sbWrite('tasador_usuarios?id=eq.' + encodeURIComponent(id), {
-        method: 'PATCH',
-        body: JSON.stringify({ clave, debe_cambiar_clave: true }),
+      // Reset via funcion de servidor: hash en la tabla cerrada + verifica superadmin firmado.
+      await sbFetch('rpc/resetear_clave', {
+        method: 'POST',
+        body: JSON.stringify({
+          p_actor: currentSession.usuario,
+          p_actor_exp: currentSession.session_exp,
+          p_actor_sig: currentSession.session_sig,
+          p_id: id, p_clave: clave,
+        }),
       });
       cerrarUsuarioModal();
       showToast('Clave reseteada. Anotala y pasásela al usuario.');
