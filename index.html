@@ -344,6 +344,30 @@ function clearSharedCookie() {
   document.cookie = SHARED_COOKIE + '=; path=/; domain=' + SHARED_DOMAIN + '; max-age=0; Secure; SameSite=Lax';
 }
 
+// ---- Firma de sesión (la emite login_tasador y la validan las Edge/RPC) ----
+// La firma es HMAC sobre "<usuario>.<exp>", así que va siempre de la mano del
+// usuario al que se le emitió: ese es `session_usuario`, que NO es el mismo que
+// `usuario` cuando un superadmin está impersonando. Al impersonar seguimos
+// autorizando como el operador real y sólo cambia la identidad que se muestra.
+function firmaVigente(s) {
+  if (!s || !s.session_sig || !s.session_exp) return false;
+  return Number(s.session_exp) > Math.floor(Date.now() / 1000);
+}
+// Firma para mandar a una Edge Function o RPC. null si la sesión no tiene una usable.
+function sesionFirmada(s) {
+  if (!firmaVigente(s)) return null;
+  return {
+    usuario: s.session_usuario || s.usuario,
+    session_exp: s.session_exp,
+    session_sig: s.session_sig,
+  };
+}
+// El usuario dueño de la firma (el operador real, no el impersonado).
+function actorFirmado(s) {
+  const f = sesionFirmada(s);
+  return f ? f.usuario : null;
+}
+
 // Catálogo de apps. Para sumar/cambiar URLs editar acá.
 const APPS = [
   {
@@ -553,6 +577,7 @@ async function login() {
     }
     const session = data[0];
     delete session.clave; // nunca persistimos la clave
+    session.session_usuario = session.usuario; // dueño de la firma que acabamos de recibir
     session.rolesArr = (Array.isArray(session.roles) && session.roles.length)
       ? session.roles
       : (session.rol ? [session.rol] : ['vendedor']);
@@ -581,6 +606,17 @@ function logout() {
   document.getElementById('loginScreen').classList.remove('hidden');
   document.getElementById('loginUser').value = '';
   document.getElementById('loginPass').value = '';
+}
+
+// Sesión inservible (sin firma o vencida): la borramos y pedimos el login con un
+// motivo visible, en vez de dejar entrar a una app que después falla en cada lectura.
+function pedirLoginDeNuevo(motivo) {
+  logout();
+  const errEl = document.getElementById('loginError');
+  if (errEl) {
+    errEl.textContent = motivo || 'Tu sesión venció. Volvé a entrar con tu usuario y contraseña.';
+    errEl.style.display = 'block';
+  }
 }
 
 function enterApp(session) {
@@ -744,7 +780,7 @@ async function loadUsuarios() {
     const data = await sbFetch('rpc/listar_usuarios', {
       method: 'POST',
       body: JSON.stringify({
-        p_actor: currentSession.usuario,
+        p_actor: actorFirmado(currentSession),
         p_actor_exp: currentSession.session_exp,
         p_actor_sig: currentSession.session_sig,
       }),
@@ -981,7 +1017,7 @@ async function guardarUsuarioModal(modo, id) {
       await sbFetch('rpc/alta_usuario', {
         method: 'POST',
         body: JSON.stringify({
-          p_actor: currentSession.usuario,
+          p_actor: actorFirmado(currentSession),
           p_actor_exp: currentSession.session_exp,
           p_actor_sig: currentSession.session_sig,
           p_usuario: usuario, p_nombre: nombre, p_clave: clave,
@@ -1010,7 +1046,7 @@ async function guardarUsuarioModal(modo, id) {
       await sbFetch('rpc/editar_usuario', {
         method: 'POST',
         body: JSON.stringify({
-          p_actor: currentSession.usuario,
+          p_actor: actorFirmado(currentSession),
           p_actor_exp: currentSession.session_exp,
           p_actor_sig: currentSession.session_sig,
           p_id: id,
@@ -1039,7 +1075,7 @@ async function guardarUsuarioModal(modo, id) {
       await sbFetch('rpc/resetear_clave', {
         method: 'POST',
         body: JSON.stringify({
-          p_actor: currentSession.usuario,
+          p_actor: actorFirmado(currentSession),
           p_actor_exp: currentSession.session_exp,
           p_actor_sig: currentSession.session_sig,
           p_id: id, p_clave: clave,
@@ -1082,11 +1118,23 @@ async function entrarComoUsuario(id) {
   delete safeOriginal.clave;
   delete safeOriginal._impersonatedBy;
 
+  // La firma no se puede emitir en el navegador (el secreto vive en el servidor),
+  // así que la sesión impersonada se lleva la del operador real: seguimos
+  // autorizando como él y sólo cambia la identidad con la que se navega. Sin
+  // esto la sesión queda sin firma y las apps que leen por db-proxy se cuelgan.
+  if (!firmaVigente(currentSession)) {
+    showToast('Tu sesión venció. Volvé a entrar antes de impersonar.');
+    return;
+  }
+
   const safeNew = Object.assign({}, u);
   delete safeNew.clave;
   safeNew.rolesArr = (Array.isArray(safeNew.roles) && safeNew.roles.length)
     ? safeNew.roles
     : (safeNew.rol ? [safeNew.rol] : ['vendedor']);
+  safeNew.session_usuario = actorFirmado(currentSession);
+  safeNew.session_exp = currentSession.session_exp;
+  safeNew.session_sig = currentSession.session_sig;
   safeNew._impersonatedBy = safeOriginal;
 
   localStorage.setItem(SESSION_KEY, JSON.stringify(safeNew));
@@ -1144,7 +1192,7 @@ async function toggleActivoUsuario(id, nuevoEstado) {
     await sbFetch('rpc/set_activo_usuario', {
       method: 'POST',
       body: JSON.stringify({
-        p_actor: currentSession.usuario,
+        p_actor: actorFirmado(currentSession),
         p_actor_exp: currentSession.session_exp,
         p_actor_sig: currentSession.session_sig,
         p_id: id, p_activo: nuevoEstado,
@@ -1178,7 +1226,7 @@ async function eliminarUsuario(id) {
     await sbFetch('rpc/eliminar_usuario', {
       method: 'POST',
       body: JSON.stringify({
-        p_actor: currentSession.usuario,
+        p_actor: actorFirmado(currentSession),
         p_actor_exp: currentSession.session_exp,
         p_actor_sig: currentSession.session_sig,
         p_id: id,
@@ -1204,8 +1252,14 @@ async function eliminarUsuario(id) {
   });
 
   // Prioridad: cookie compartida (SSO) > localStorage propio.
+  // Una sesión sin firma vigente no sirve: las apps leen por RPC/Edge firmadas y
+  // fallarían consulta por consulta. Mejor tirarla y pedir el login de una.
   const cookieSession = getSharedCookie();
   if (cookieSession && cookieSession.usuario) {
+    if (!firmaVigente(cookieSession)) {
+      pedirLoginDeNuevo();
+      return;
+    }
     cookieSession.rolesArr = (Array.isArray(cookieSession.roles) && cookieSession.roles.length)
       ? cookieSession.roles
       : (cookieSession.rol ? [cookieSession.rol] : ['vendedor']);
@@ -1218,6 +1272,10 @@ async function eliminarUsuario(id) {
     try {
       const session = JSON.parse(raw);
       if (session && session.usuario) {
+        if (!firmaVigente(session)) {
+          pedirLoginDeNuevo();
+          return;
+        }
         setSharedCookie(session); // re-propagar a otras apps si hay sesión local pero no cookie
         enterApp(session);
       }
