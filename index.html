@@ -739,8 +739,16 @@ async function loadUsuarios() {
   const list = document.getElementById('sisList');
   list.innerHTML = '<div style="text-align:center; padding:40px; color:var(--vw-grey-3)">Cargando...</div>';
   try {
-    // `clave` NUNCA se trae del backend para que no quede ni en el JSON.
-    const data = await sbFetch('tasador_usuarios?select=id,usuario,nombre,email,telefono_wa,callmebot_key,roles,rol,activo,debe_cambiar_clave&order=usuario.asc');
+    // Lista via RPC server-side (superadmin firmado): la anon key ya no lee
+    // tasador_usuarios, así callmebot_key y el contacto del staff quedan protegidos.
+    const data = await sbFetch('rpc/listar_usuarios', {
+      method: 'POST',
+      body: JSON.stringify({
+        p_actor: currentSession.usuario,
+        p_actor_exp: currentSession.session_exp,
+        p_actor_sig: currentSession.session_sig,
+      }),
+    });
     let arr = data || [];
     // Las cuentas protegidas son invisibles si el operador no es el owner.
     if (!_esOwner()) arr = arr.filter(u => !_esUsuarioProtegido(u.usuario));
@@ -999,15 +1007,19 @@ async function guardarUsuarioModal(modo, id) {
     if (!rolesSel.length) return _mostrarErrorUsuario('Tildá al menos un rol');
 
     try {
-      await sbWrite('tasador_usuarios?id=eq.' + encodeURIComponent(id), {
-        method: 'PATCH',
+      await sbFetch('rpc/editar_usuario', {
+        method: 'POST',
         body: JSON.stringify({
-          nombre,
-          rol: rolesSel[0], roles: rolesSel,
-          email: email || null,
-          telefono_wa: telWa || null,
-          callmebot_key: callmebot || null,
-          activo,
+          p_actor: currentSession.usuario,
+          p_actor_exp: currentSession.session_exp,
+          p_actor_sig: currentSession.session_sig,
+          p_id: id,
+          p_nombre: nombre,
+          p_rol: rolesSel[0], p_roles: rolesSel,
+          p_email: email || null,
+          p_tel: telWa || null,
+          p_callmebot: callmebot || null,
+          p_activo: activo,
         }),
       });
       cerrarUsuarioModal();
@@ -1129,9 +1141,14 @@ async function toggleActivoUsuario(id, nuevoEstado) {
   const accion = nuevoEstado ? 'activar' : 'desactivar';
   if (!confirm('¿Seguro que querés ' + accion + ' al usuario "' + u.usuario + '"?')) return;
   try {
-    await sbWrite('tasador_usuarios?id=eq.' + encodeURIComponent(id), {
-      method: 'PATCH',
-      body: JSON.stringify({ activo: nuevoEstado }),
+    await sbFetch('rpc/set_activo_usuario', {
+      method: 'POST',
+      body: JSON.stringify({
+        p_actor: currentSession.usuario,
+        p_actor_exp: currentSession.session_exp,
+        p_actor_sig: currentSession.session_sig,
+        p_id: id, p_activo: nuevoEstado,
+      }),
     });
     showToast(nuevoEstado ? 'Usuario activado' : 'Usuario desactivado');
     await loadUsuarios();
@@ -1158,7 +1175,15 @@ async function eliminarUsuario(id) {
   );
   if (!ok) return;
   try {
-    await sbWrite('tasador_usuarios?id=eq.' + encodeURIComponent(id), { method: 'DELETE' });
+    await sbFetch('rpc/eliminar_usuario', {
+      method: 'POST',
+      body: JSON.stringify({
+        p_actor: currentSession.usuario,
+        p_actor_exp: currentSession.session_exp,
+        p_actor_sig: currentSession.session_sig,
+        p_id: id,
+      }),
+    });
     showToast('Usuario eliminado');
     await loadUsuarios();
   } catch(e) {
