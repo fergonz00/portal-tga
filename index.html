@@ -516,6 +516,18 @@ const APPS = [
     requiereUsuario: ['mlubrano', 'fngonzalez', 'cgonzalez', 'fgonzalez', 'mlopez'],
   },
   {
+    id: 'repuestos',
+    title: 'Repuestos',
+    desc: 'Licitaciones a aseguradoras: qué se ofertó, a cuánto, si era de nuestro stock o de VW, y cómo le fue.',
+    url: 'https://repuestos.titogonzalez.online',
+    icon: '🔩',
+    color: 'orange',
+    badge: 'Privado',
+    // Quién entra lo vuelve a validar la app (sesión firmada + allow-list en
+    // repuestos-tga/lib/licitaciones.ts): sumar a alguien acá Y allá.
+    requiereUsuario: ['fngonzalez', 'fgonzalez', 'cgonzalez', 'gorozco'],
+  },
+  {
     id: 'controles',
     title: 'Administración Controles',
     desc: 'Control de Comprobantes y Control de Patentamiento. Cada usuario ve los que tiene habilitados.',
