@@ -311,7 +311,7 @@ const IMPERSONAR_SOLO_OWNER = ['marianom'];
 // Usuarios que SOLO ven las apps habilitadas explícitamente para ellos
 // (via requiereUsuario) y NO las apps abiertas a todos. Ej: 'admincampo'
 // (Valeria) solo ve la tarjeta Campo, ninguna otra del ecosistema.
-const USUARIOS_SOLO_SU_TARJETA = ['admincampo', 'isaybode', 'marianom', 'mlopez', 'mlbitz'];
+const USUARIOS_SOLO_SU_TARJETA = ['admincampo', 'isaybode', 'marianom', 'mlopez', 'mlbitz', 'repuestos'];
 // Usuarios para los que las apps con group:'otros' se agrupan bajo la tarjeta
 // "Otros" (sub-vista). Es SOLO una agrupación visual: el resto del equipo sigue
 // viendo esas apps sueltas en la grilla, según lo que le permita su rol. No saca
@@ -525,7 +525,7 @@ const APPS = [
     badge: 'Privado',
     // Quién entra lo vuelve a validar la app (sesión firmada + allow-list en
     // repuestos-tga/lib/licitaciones.ts): sumar a alguien acá Y allá.
-    requiereUsuario: ['fngonzalez', 'fgonzalez', 'cgonzalez', 'gorozco'],
+    requiereUsuario: ['fngonzalez', 'fgonzalez', 'cgonzalez', 'gorozco', 'repuestos'],
   },
   {
     id: 'controles',
