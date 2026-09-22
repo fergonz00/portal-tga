@@ -393,6 +393,8 @@ const APPS = [
     url: 'https://precios.titogonzalez.online',
     icon: '$',
     color: 'green',
+    // Abierta a todos; marianom es usuario restringido y la ve por excepcion.
+    tambienRestringidos: ['marianom'],
   },
   {
     id: 'formularios',
@@ -656,9 +658,12 @@ function _computeAppsVisibles() {
   const soloSuTarjeta = USUARIOS_SOLO_SU_TARJETA.includes(usuarioActual);
   return APPS.filter(app => {
     if (soloSuTarjeta) {
-      const permitidos = Array.isArray(app.requiereUsuario)
-        ? app.requiereUsuario
-        : (app.requiereUsuario ? [app.requiereUsuario] : []);
+      const lista = v => Array.isArray(v) ? v : (v ? [v] : []);
+      // `requiereUsuario` RESTRINGE la app a esos usuarios. `tambienRestringidos`
+      // en cambio la deja abierta a todos y ADEMAS se la muestra a un usuario
+      // restringido puntual: poner a marianom en `requiereUsuario` de Precios le
+      // habria sacado la tarjeta a todo el resto del equipo.
+      const permitidos = [...lista(app.requiereUsuario), ...lista(app.tambienRestringidos)];
       return permitidos.includes(usuarioActual);
     }
     if (app.requiereUsuario) {
