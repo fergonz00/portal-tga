@@ -504,9 +504,10 @@ const APPS = [
     color: 'blue',
     badge: 'Privado',
     group: 'otros',
-    // Fer y los dueños. Ines y Daniel se suman cuando Fer pase sus usuarios;
-    // hay que agregarlos TAMBIEN en la env CORPORATIVAS_ALLOWED_USERS de Vercel.
-    requiereUsuario: ['fngonzalez', 'fgonzalez', 'cgonzalez'],
+    // Los dueños + Ines Alonso y Daniel Lopez, que atienden el canal corporativo.
+    // Si se suma gente, agregarla TAMBIEN en corporativas-tga/api/_lib.js
+    // (DEFAULT_USERS) o van a ver la tarjeta pero no van a poder entrar.
+    requiereUsuario: ['fngonzalez', 'fgonzalez', 'cgonzalez', 'ialonso', 'dlopez'],
   },
   {
     id: 'contenido',
