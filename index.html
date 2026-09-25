@@ -558,6 +558,18 @@ const APPS = [
     //   Patentamiento: mlubrano, fngonzalez (total) · nvera (carga) · vreyna, mgerez, dlopez (lectura)
     requiereUsuario: ['mlubrano', 'fngonzalez', 'vreyna', 'nvera', 'mgerez', 'dlopez'],
   },
+  {
+    id: 'camaras',
+    title: 'Cámaras',
+    desc: 'Cámaras de seguridad del concesionario en vivo (Entre Ríos).',
+    url: 'https://camaras.titogonzalez.online',
+    icon: '📹',
+    color: 'purple',
+    badge: 'Privado',
+    // El acceso lo re-valida el VPS: Edge Function camaras-auth verifica la firma
+    // del SSO (tga_session) + esta misma whitelist. Sumar a alguien acá Y allá.
+    requiereUsuario: ['mlubrano', 'fngonzalez'],
+  },
 ];
 
 // =======================================================================
