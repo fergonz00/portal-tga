@@ -415,6 +415,10 @@ const APPS = [
     color: 'red',
     badge: 'Login propio',
     group: 'otros',
+    // Abierta a todos; `repuestos` es usuario restringido y la ve por excepcion.
+    // Ya entraba al CRM por la URL directa (tiene usuario propio en `vendedores`):
+    // esto solo hace que el portal deje de contradecir al CRM.
+    tambienRestringidos: ['repuestos'],
   },
   {
     id: 'chat',
