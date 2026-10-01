@@ -145,12 +145,32 @@ grant execute on function public.email_de_usuario(text, bigint, text, uuid) to a
 
 
 -- ============================================================================
--- REVOKE - correr SOLO despues de verificar los paneles migrados en produccion
+-- PASO 1 (APLICADO 01-oct-2026): revoke parcial
+-- ============================================================================
+-- Migrados y verificados en produccion: portal, tasador-tga, consulta-0km,
+-- contenido-tga, postventa-tga y envios-tga. Falta UNO: comprobantes-tga, cuyo
+-- deploy de produccion (30-sep) todavia tiene el sso.js viejo, que lee
+-- `?usuario=eq.X&activo=eq.true&select=usuario,nombre` con la anon key. No se
+-- puede deployar el fix sin publicar de arrastre el modulo Carpetas, que esta
+-- en local (/carpetas.html da 404 en produccion).
+--
+-- Asi que se le saca a anon TODO menos las tres columnas que necesita ese
+-- gate. Lo que de verdad importaba -- email, telefono de WhatsApp, rol, id --
+-- deja de ser legible ya. Queda a la vista la lista de usuarios y nombres:
+-- enumeracion, no directorio.
+--
+--   revoke select on public.tasador_usuarios from anon, authenticated;
+--   grant select (usuario, nombre, activo) on public.tasador_usuarios to anon, authenticated;
+
+-- ============================================================================
+-- PASO 2 (PENDIENTE): revoke total, cuando comprobantes-tga deployee el fix
 -- ============================================================================
 -- revoke select on public.tasador_usuarios from anon, authenticated;
---
--- Para volver atras si algo quedo colgado (deja la tabla como estaba el
--- 01-oct-2026: todo menos callmebot_key):
+
+-- ============================================================================
+-- REVERT - si algo quedo colgado, devuelve la tabla al estado del 01-oct-2026
+-- (todo menos callmebot_key)
+-- ============================================================================
 -- grant select (id, usuario, nombre, email, telefono_wa, roles, rol, activo,
 --               created_at, debe_cambiar_clave, notificaciones_wa)
 --   on public.tasador_usuarios to anon, authenticated;
