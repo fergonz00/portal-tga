@@ -574,7 +574,7 @@ const APPS = [
   {
     id: 'controles',
     title: 'Administración Controles',
-    desc: 'Control de Comprobantes y Control de Patentamiento. Cada usuario ve los que tiene habilitados.',
+    desc: 'Control de Comprobantes, Control de Patentamiento y Carpetas. Cada usuario ve los que tiene habilitados.',
     url: 'https://administracion.titogonzalez.online/controles',
     icon: '🗂️',
     color: 'green',
@@ -583,7 +583,11 @@ const APPS = [
     // lo decide el servidor (comprobantes-tga, lib/sso.js):
     //   Comprobantes:  mlubrano, fngonzalez (total) · vreyna, nvera
     //   Patentamiento: mlubrano, fngonzalez (total) · nvera (carga) · vreyna, mgerez, dlopez (lectura)
-    requiereUsuario: ['mlubrano', 'fngonzalez', 'vreyna', 'nvera', 'mgerez', 'dlopez'],
+    //   Carpetas:      mlubrano, fngonzalez (total) · mgerez, dlopez (supervisión) · megerez, alaso,
+    //                  vfernandez (administrativas) · los vendedores de comprobantes-tga/config/carpetas.json
+    requiereUsuario: ['mlubrano', 'fngonzalez', 'vreyna', 'nvera', 'mgerez', 'dlopez',
+      'megerez', 'alaso', 'vfernandez',
+      'jcastro', 'aloisi', 'mcastro', 'jfazzini', 'jnaddeo', 'ialonso', 'gbuena', 'tbandiera'],
   },
   {
     id: 'camaras',
