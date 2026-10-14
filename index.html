@@ -311,7 +311,7 @@ const IMPERSONAR_SOLO_OWNER = ['marianom'];
 // Usuarios que SOLO ven las apps habilitadas explícitamente para ellos
 // (via requiereUsuario) y NO las apps abiertas a todos. Ej: 'admincampo'
 // (Valeria) solo ve la tarjeta Campo, ninguna otra del ecosistema.
-const USUARIOS_SOLO_SU_TARJETA = ['admincampo', 'isaybode', 'marianom', 'mlopez', 'mlbitz', 'repuestos', 'gcordoba'];
+const USUARIOS_SOLO_SU_TARJETA = ['admincampo', 'isaybode', 'marianom', 'mlopez', 'mlbitz', 'repuestos', 'gcordoba', 'rgonzalez', 'pdamico'];
 // Usuarios para los que las apps con group:'otros' se agrupan bajo la tarjeta
 // "Otros" (sub-vista). Es SOLO una agrupación visual: el resto del equipo sigue
 // viendo esas apps sueltas en la grilla, según lo que le permita su rol. No saca
@@ -570,7 +570,9 @@ const APPS = [
     // repuestos-tga/lib/licitaciones.ts y lib/compras.ts): sumar a alguien acá Y allá.
     // mlopez (Maxi) entra por la solapa Siniestros de clientes (Fer, 14-10-2026); Compras
     // recién cuando Fer la dé por buena (en la app no está en COMPRAS_USUARIOS).
-    requiereUsuario: ['fngonzalez', 'fgonzalez', 'cgonzalez', 'gorozco', 'repuestos', 'mlopez'],
+    // mlbitz (María Luján) supervisa y rgonzalez / pdamico (Ricardo y Pamela, asesores de taller)
+    // llaman los Siniestros de clientes (Fer, 14-10-2026); en la app ven solo esa solapa.
+    requiereUsuario: ['fngonzalez', 'fgonzalez', 'cgonzalez', 'gorozco', 'repuestos', 'mlopez', 'mlbitz', 'rgonzalez', 'pdamico'],
   },
   {
     id: 'controles',
