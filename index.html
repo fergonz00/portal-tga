@@ -281,6 +281,12 @@ a { color: inherit; text-decoration: none; }
       <button onclick="abrirNuevoUsuario()" style="background:var(--vw-blue); color:white; padding:10px 16px; border-radius:8px; font-size:14px; font-weight:600">+ Nuevo usuario</button>
     </div>
 
+    <div style="margin-bottom:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+      <input id="sisBuscar" type="search" placeholder="Buscar por usuario o nombre…" autocomplete="off"
+        style="flex:1; min-width:0; width:100%; max-width:340px; padding:10px 13px; font-size:14px; font-family:inherit;
+               border:1px solid var(--vw-grey-2); border-radius:8px; background:white">
+      <span id="sisCuenta" style="font-size:12px; color:var(--vw-grey-4)"></span>
+    </div>
     <div id="sisList"></div>
   </main>
 </div>
@@ -701,8 +707,58 @@ function pedirLoginDeNuevo(motivo) {
   }
 }
 
+// ---- Vigilancia del vencimiento de la sesion ----
+//
+// La firma de sesion tiene fecha de vencimiento, y hasta ahora se controlaba
+// SOLO al cargar la pagina. Con la pestaña abierta la sesion se vencia sin que
+// nadie avisara: las tarjetas seguian ahi, y el que entraba a una app se comia
+// un rechazo sin entender por que (paso de verdad el 29/10/2026).
+//
+// Se mira cada minuto y, ademas, cada vez que volves a la pestaña: si estuvo
+// en segundo plano un rato largo, el navegador frena los timers y el aviso
+// llegaria tarde.
+let _vigilaVencimiento = null;
+
+function avisarSesionVencida() {
+  if (document.getElementById("sesionVencida")) return;   // ya esta puesto
+  const caja = document.createElement("div");
+  caja.id = "sesionVencida";
+  caja.style.cssText = "position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);"
+    + "display:flex;align-items:center;justify-content:center;padding:20px";
+  caja.innerHTML = '<div style="background:#fff;border-radius:14px;padding:26px 28px;max-width:400px;'
+    + 'box-shadow:0 18px 50px rgba(0,0,0,.3);text-align:center;font-family:inherit">'
+    + '<div style="font-size:34px;margin-bottom:10px">&#9201;</div>'
+    + '<h3 style="margin:0 0 8px;font-size:18px">Tu sesi&oacute;n venci&oacute;</h3>'
+    + '<p style="margin:0 0 18px;color:#555;font-size:14px;line-height:1.55">'
+    + 'Por seguridad la sesi&oacute;n dura un rato limitado. Volv&eacute; a entrar con tu usuario '
+    + 'y contrase&ntilde;a para seguir.</p>'
+    + '<button id="sesionVencidaBtn" style="background:#001E50;color:#fff;border:0;border-radius:9px;'
+    + 'padding:11px 22px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">'
+    + 'Volver a entrar</button></div>';
+  document.body.appendChild(caja);
+  document.getElementById("sesionVencidaBtn").addEventListener("click", () => {
+    caja.remove();
+    pedirLoginDeNuevo();
+  });
+}
+
+function controlarVencimiento() {
+  if (!currentSession) return;
+  if (firmaVigente(currentSession)) return;
+  if (_vigilaVencimiento) { clearInterval(_vigilaVencimiento); _vigilaVencimiento = null; }
+  avisarSesionVencida();
+}
+
+function vigilarVencimiento() {
+  if (_vigilaVencimiento) clearInterval(_vigilaVencimiento);
+  _vigilaVencimiento = setInterval(controlarVencimiento, 60000);
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) controlarVencimiento(); });
+window.addEventListener("focus", controlarVencimiento);
+
 function enterApp(session) {
   currentSession = session;
+  vigilarVencimiento();
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('appScreen').classList.remove('hidden');
   document.getElementById('sistemaScreen').classList.add('hidden');
@@ -856,6 +912,17 @@ function cerrarSistema() {
   document.getElementById('appScreen').classList.remove('hidden');
 }
 
+// Se engancha una sola vez: la pantalla de Sistema se abre y se cierra varias
+// veces en la misma sesion y no hay que apilar listeners.
+let _buscadorEnganchado = false;
+function engancharBuscadorUsuarios() {
+  if (_buscadorEnganchado) return;
+  const inp = document.getElementById("sisBuscar");
+  if (!inp) return;
+  _buscadorEnganchado = true;
+  inp.addEventListener("input", () => { _filtroUsuarios = inp.value; renderUsuarios(); });
+}
+
 async function loadUsuarios() {
   const list = document.getElementById('sisList');
   list.innerHTML = '<div style="text-align:center; padding:40px; color:var(--vw-grey-3)">Cargando...</div>';
@@ -874,6 +941,7 @@ async function loadUsuarios() {
     // Las cuentas protegidas son invisibles si el operador no es el owner.
     if (!_esOwner()) arr = arr.filter(u => !_esUsuarioProtegido(u.usuario));
     usuariosData = arr;
+    engancharBuscadorUsuarios();
     renderUsuarios();
   } catch(e) {
     console.error(e);
@@ -881,13 +949,43 @@ async function loadUsuarios() {
   }
 }
 
+// Lo que se escribio en el buscador. Se guarda aparte de usuariosData para que
+// un refresco de la lista (alta, baja, reset de clave) no lo pierda.
+let _filtroUsuarios = "";
+
+// Sin acentos y en minuscula: asi "monica" encuentra a "Mónica".
+function _sinAcentos(s) {
+  return String(s == null ? "" : s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+function _usuariosFiltrados() {
+  const q = _sinAcentos(_filtroUsuarios).trim();
+  if (!q) return usuariosData;
+  // Cada palabra por separado: "mo mar" tambien encuentra a Monica Marandola.
+  const partes = q.split(/\s+/);
+  return usuariosData.filter(u => {
+    const heno = _sinAcentos((u.usuario || "") + " " + (u.nombre || ""));
+    return partes.every(x => heno.includes(x));
+  });
+}
+
 function renderUsuarios() {
   const list = document.getElementById('sisList');
+  const vistos = _usuariosFiltrados();
+  const cuenta = document.getElementById("sisCuenta");
+  if (cuenta) cuenta.textContent = _filtroUsuarios.trim()
+    ? vistos.length + " de " + usuariosData.length
+    : usuariosData.length + " usuarios";
   if (!usuariosData.length) {
     list.innerHTML = '<div style="text-align:center; padding:40px; color:var(--vw-grey-3)">Sin usuarios</div>';
     return;
   }
-  const rows = usuariosData.map(u => {
+  if (!vistos.length) {
+    list.innerHTML = '<div style="text-align:center; padding:40px; color:var(--vw-grey-3)">'
+      + 'Ningun usuario coincide con "' + _escapeHtmlUsr(_filtroUsuarios) + '"</div>';
+    return;
+  }
+  const rows = vistos.map(u => {
     const roles = _getRolesDeUsuario(u).join(', ');
     const isAdmin = _esAdmin(u);
     const activo = u.activo !== false;
