@@ -312,7 +312,7 @@ const IMPERSONAR_SOLO_OWNER = ['marianom'];
 // (via requiereUsuario) y NO las apps abiertas a todos. Ej: 'admincampo'
 // (Valeria) solo ve la tarjeta Campo, ninguna otra del ecosistema.
 // jmarquevich y cbedorrou (despacho de autos para exhibición): solo Administración y Lista de Accesorios.
-const USUARIOS_SOLO_SU_TARJETA = ['admincampo', 'isaybode', 'marianom', 'mlopez', 'mlbitz', 'repuestos', 'gcordoba', 'rgonzalez', 'pdamico', 'dclement', 'jmarquevich', 'cbedorrou'];
+const USUARIOS_SOLO_SU_TARJETA = ['admincampo', 'isaybode', 'marianom', 'mlopez', 'mlbitz', 'repuestos', 'gcordoba', 'rgonzalez', 'pdamico', 'dclement', 'jmarquevich', 'cbedorrou', 'mmarandola'];
 // Usuarios para los que las apps con group:'otros' se agrupan bajo la tarjeta
 // "Otros" (sub-vista). Es SOLO una agrupación visual: el resto del equipo sigue
 // viendo esas apps sueltas en la grilla, según lo que le permita su rol. No saca
@@ -407,7 +407,7 @@ const APPS = [
     // Abierta a todos; marianom y gcordoba (solo-su-tarjeta) la ven por excepcion.
     // gcordoba (Gisela, accesorios) SOLO ve esta tarjeta en el portal.
     // jmarquevich y cbedorrou (despacho) la ven junto con Administración.
-    tambienRestringidos: ['marianom', 'gcordoba', 'jmarquevich', 'cbedorrou'],
+    tambienRestringidos: ['marianom', 'gcordoba', 'jmarquevich', 'cbedorrou', 'mmarandola'],
   },
   {
     id: 'formularios',
@@ -594,7 +594,9 @@ const APPS = [
     //                  los vendedores de comprobantes-tga/config/carpetas.json
     requiereUsuario: ['mlubrano', 'fngonzalez', 'cgonzalez', 'vreyna', 'nvera', 'mgerez', 'dlopez',
       'megerez', 'alaso', 'vfernandez', 'jmarquevich', 'cbedorrou',
-      'jcastro', 'aloisi', 'mcastro', 'jfazzini', 'jnaddeo', 'ialonso', 'gbuena', 'tbandiera'],
+      'jcastro', 'aloisi', 'mcastro', 'jfazzini', 'jnaddeo', 'ialonso', 'gbuena', 'tbandiera',
+      // Monica Marandola (29/10/2026): entra solo a Impuestos (la liquidacion de IVA).
+      'mmarandola'],
   },
   {
     id: 'camaras',
