@@ -325,6 +325,21 @@ const USUARIOS_SOLO_SU_TARJETA = ['admincampo', 'isaybode', 'marianom', 'mlopez'
 // acceso a nadie — quien ya entraba a Formularios/CRM lo sigue viendo.
 const OTROS_USUARIOS = ['fngonzalez', 'fgonzalez', 'cgonzalez'];
 
+// Roles que habilitan UNA sola tarjeta del portal, y nada mas.
+//
+// Hasta ahora, para que alguien viera solo Lista de Accesorios habia que tocar
+// codigo en DOS lugares (sumarlo a USUARIOS_SOLO_SU_TARJETA y al
+// `tambienRestringidos` de la app) y deployar. Con esto se tilda el rol al dar
+// de alta y listo: una persona de accesorios no necesita ver el tasador, el CRM
+// ni las listas de 0km.
+//
+// Combinado con otro rol NO resta nada: si alguien tiene vendedor + accesorios,
+// ve lo de vendedor (Lista de Accesorios ya esta abierta a todos). El recorte a
+// una sola tarjeta aplica solo cuando TODOS sus roles son de este tipo.
+const ROLES_DE_UNA_APP = {
+  accesorios: 'accesorios',   // rol -> id de la app en APPS
+};
+
 // Sesion vigente en memoria (para gates de UI).
 let currentSession = null;
 // Cache del listado en la vista Sistema.
@@ -778,6 +793,13 @@ function _computeAppsVisibles() {
     ? currentSession.rolesArr
     : [];
   const usuarioActual = (currentSession && currentSession.usuario) || '';
+  // Roles de una sola app (ver ROLES_DE_UNA_APP): si TODOS los roles del usuario
+  // son de ese tipo, ve unicamente esas tarjetas. Va antes que el resto porque
+  // es el recorte mas fuerte.
+  const appsDeRol = rolesUsuario.map(r => ROLES_DE_UNA_APP[r]).filter(Boolean);
+  if (appsDeRol.length && appsDeRol.length === rolesUsuario.length) {
+    return APPS.filter(app => appsDeRol.includes(app.id));
+  }
   // Usuarios restringidos: SOLO ven las apps donde están en requiereUsuario.
   const soloSuTarjeta = USUARIOS_SOLO_SU_TARJETA.includes(usuarioActual);
   return APPS.filter(app => {
@@ -1073,6 +1095,7 @@ function _mostrarUsuarioModal(modo, u) {
     { value: 'f01_owner', label: 'F01 owner', desc: 'Panel formularios (owner)' },
     { value: 'f01_admin', label: 'F01 admin', desc: 'Panel formularios (admin)' },
     { value: 'chat_admin', label: 'Chat (WhatsApp)', desc: 'Acceso a la inbox del chat con IA' },
+    { value: 'accesorios', label: 'Lista de Accesorios', desc: 'Solo la lista de precios de accesorios VW' },
   ];
   const rolesMulti = (selArr) => {
     const sel = Array.isArray(selArr) && selArr.length ? selArr : [];
@@ -1176,6 +1199,15 @@ async function guardarUsuarioModal(modo, id) {
     return Array.from(cbs).map(cb => cb.value);
   }
 
+  // La columna `rol` de la base tiene CHECK (rol in ('vendedor','admin')): es el
+  // rol BASE, mientras que los permisos finos viven en el array `roles`. Antes se
+  // mandaba rolesSel[0] —el primero que estuviera tildado—, asi que tildar solo
+  // "Chat" o solo "Lista de Accesorios" reventaba el alta contra el CHECK y
+  // obligaba a tildar Vendedor de prepo aunque no correspondiera.
+  function rolBaseDe(rolesSel) {
+    return rolesSel.includes('admin') ? 'admin' : 'vendedor';
+  }
+
   if (modo === 'nuevo') {
     const usuario = (document.getElementById('usrUsuario').value || '').trim().toLowerCase();
     if (_esUsuarioProtegido(usuario) && !_esOwner()) return _mostrarErrorUsuario('Ese nombre de usuario está reservado');
@@ -1204,7 +1236,7 @@ async function guardarUsuarioModal(modo, id) {
           p_actor_exp: currentSession.session_exp,
           p_actor_sig: currentSession.session_sig,
           p_usuario: usuario, p_nombre: nombre, p_clave: clave,
-          p_rol: rolesSel[0], p_roles: rolesSel,
+          p_rol: rolBaseDe(rolesSel), p_roles: rolesSel,
           p_email: email || null, p_tel: telWa || null, p_callmebot: callmebot || null,
         }),
       });
@@ -1234,7 +1266,7 @@ async function guardarUsuarioModal(modo, id) {
           p_actor_sig: currentSession.session_sig,
           p_id: id,
           p_nombre: nombre,
-          p_rol: rolesSel[0], p_roles: rolesSel,
+          p_rol: rolBaseDe(rolesSel), p_roles: rolesSel,
           p_email: email || null,
           p_tel: telWa || null,
           p_callmebot: callmebot || null,
