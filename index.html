@@ -798,16 +798,20 @@ function _computeAppsVisibles() {
     ? currentSession.rolesArr
     : [];
   const usuarioActual = (currentSession && currentSession.usuario) || '';
-  // Roles de una sola app (ver ROLES_DE_UNA_APP): si TODOS los roles del usuario
-  // son de ese tipo, ve unicamente esas tarjetas. Va antes que el resto porque
-  // es el recorte mas fuerte.
+  // Roles de una sola app (ver ROLES_DE_UNA_APP). Hacen DOS cosas:
+  //  - suman su tarjeta siempre, aunque la persona tenga otros roles o este
+  //    restringida (abajo, el primer return del filtro);
+  //  - cuando son los UNICOS roles de la persona, ademas recortan el resto,
+  //    igual que un usuario restringido.
+  // Asi un alta nueva con solo "Lista de Accesorios" ve unicamente esa tarjeta,
+  // y a la vez quien ya tenia un acceso puntual cargado por nombre no lo pierde
+  // al darle accesorios: a Pamela, asesora de taller, el rol le tapaba Repuestos.
   const appsDeRol = rolesUsuario.map(r => ROLES_DE_UNA_APP[r]).filter(Boolean);
-  if (appsDeRol.length && appsDeRol.length === rolesUsuario.length) {
-    return APPS.filter(app => appsDeRol.includes(app.id));
-  }
+  const soloRolesDeUnaApp = appsDeRol.length > 0 && appsDeRol.length === rolesUsuario.length;
   // Usuarios restringidos: SOLO ven las apps donde están en requiereUsuario.
-  const soloSuTarjeta = USUARIOS_SOLO_SU_TARJETA.includes(usuarioActual);
+  const soloSuTarjeta = soloRolesDeUnaApp || USUARIOS_SOLO_SU_TARJETA.includes(usuarioActual);
   return APPS.filter(app => {
+    if (appsDeRol.includes(app.id)) return true;
     if (soloSuTarjeta) {
       const lista = v => Array.isArray(v) ? v : (v ? [v] : []);
       // `requiereUsuario` RESTRINGE la app a esos usuarios. `tambienRestringidos`
