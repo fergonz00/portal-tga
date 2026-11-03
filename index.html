@@ -650,7 +650,12 @@ async function sbFetch(path, opts = {}) {
     const text = await res.text().catch(() => '');
     throw new Error(`Supabase ${res.status}: ${text}`);
   }
-  return res.json();
+  // Las funciones que no devuelven nada (editar_usuario, set_activo_usuario,
+  // eliminar_usuario son `returns void`) contestan 204 sin cuerpo. Llamar a
+  // .json() sobre eso explota con "Unexpected end of JSON input", asi que el
+  // guardado se hacia bien pero la pantalla mostraba error y no refrescaba.
+  const cuerpo = await res.text();
+  return cuerpo ? JSON.parse(cuerpo) : null;
 }
 
 // =======================================================================
