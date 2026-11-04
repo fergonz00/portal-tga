@@ -608,8 +608,8 @@ const APPS = [
     badge: 'Privado',
     // Todos los que tienen AL MENOS un control. Qué ve y qué puede hacer cada uno
     // lo decide el servidor (comprobantes-tga, lib/sso.js):
-    //   Comprobantes:  mlubrano, fngonzalez, cgonzalez (total) · vreyna, nvera
-    //   Patentamiento: mlubrano, fngonzalez (total) · nvera (carga) · vreyna, mgerez, dlopez (lectura)
+    //   Comprobantes:  mlubrano, fngonzalez, cgonzalez (total) · vreyna, nvera, dclement
+    //   Patentamiento: mlubrano, fngonzalez (total) · nvera, dclement (carga) · vreyna, mgerez, dlopez (lectura)
     //   Carpetas:      mlubrano, fngonzalez (total) · mgerez, dlopez (supervisión) · megerez, alaso,
     //                  vfernandez (administrativas) · jmarquevich, cbedorrou (despacho de autos para exhibición) ·
     //                  los vendedores de comprobantes-tga/config/carpetas.json
@@ -618,7 +618,10 @@ const APPS = [
       'jcastro', 'aloisi', 'mcastro', 'jfazzini', 'jnaddeo', 'ialonso', 'gbuena', 'tbandiera',
       // Impuestos (29/10/2026): Monica Marandola entra SOLO ahi. Fernando M.
       // (fgonzalez, que NO es fngonzalez) se suma por el mismo motivo.
-      'mmarandola', 'fgonzalez'],
+      'mmarandola', 'fgonzalez',
+      // Dominique (03/11/2026): el servidor ya le daba Comprobantes y la carga de
+      // Patentamiento, pero faltaba aca y por eso no le aparecia la tarjeta.
+      'dclement'],
   },
   {
     id: 'camaras',
