@@ -579,8 +579,11 @@ const APPS = [
     icon: '🔧',
     color: 'blue',
     badge: 'Privado',
-    // Datos financieros del taller: ADM (los 4) + Gerente solo-lectura (mlopez).
-    requiereUsuario: ['mlubrano', 'fngonzalez', 'cgonzalez', 'fgonzalez', 'mlopez'],
+    // Datos financieros del taller: ADM (los 4) + Gerentes solo-lectura (mlopez y,
+    // desde el 05/11/2026, marianom). Sumar a alguien aca solo le muestra la tarjeta:
+    // quien ENTRA y quien MODIFICA lo deciden las env vars de postventa-tga
+    // (POSTVENTA_ALLOWED_USERS / POSTVENTA_ADMIN_USERS). Marianom NO esta en ADMIN.
+    requiereUsuario: ['mlubrano', 'fngonzalez', 'cgonzalez', 'fgonzalez', 'mlopez', 'marianom'],
   },
   {
     id: 'repuestos',
@@ -633,7 +636,7 @@ const APPS = [
     badge: 'Privado',
     // El acceso lo re-valida el VPS: Edge Function camaras-auth verifica la firma
     // del SSO (tga_session) + esta misma whitelist. Sumar a alguien acá Y allá.
-    requiereUsuario: ['mlubrano', 'fngonzalez'],
+    requiereUsuario: ['mlubrano', 'fngonzalez', 'marianom'],
   },
 ];
 
