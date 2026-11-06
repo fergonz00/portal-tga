@@ -685,7 +685,22 @@ async function login() {
       body: JSON.stringify({ p_usuario: user, p_clave: pass }),
     });
     if (!Array.isArray(data) || !data.length) {
-      errEl.textContent = 'Usuario o contraseña incorrectos.';
+      // login_tasador devuelve CERO FILAS por dos motivos bien distintos: la clave
+      // esta mal, o la persona agoto los intentos y quedo frenada unos minutos.
+      // Preguntamos cual de los dos fue, para no decirle "clave incorrecta" a
+      // alguien que la tiene bien. Si no se puede preguntar, va el mensaje de siempre.
+      let msg = 'Usuario o contraseña incorrectos.';
+      try {
+        const b = await sbFetch('rpc/login_bloqueado', {
+          method: 'POST', body: JSON.stringify({ p_usuario: user }),
+        });
+        const f = Array.isArray(b) ? b[0] : null;
+        if (f && f.bloqueado) {
+          const m = Number(f.minutos) || 1;
+          msg = `Demasiados intentos fallidos. Esperá ${m} ${m === 1 ? 'minuto' : 'minutos'} y volvé a probar.`;
+        }
+      } catch (e) { /* si falla la consulta, queda el mensaje generico */ }
+      errEl.textContent = msg;
       errEl.style.display = 'block';
       return;
     }
