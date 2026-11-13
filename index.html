@@ -338,6 +338,12 @@ const OTROS_USUARIOS = ['fngonzalez', 'fgonzalez', 'cgonzalez'];
 // una sola tarjeta aplica solo cuando TODOS sus roles son de este tipo.
 const ROLES_DE_UNA_APP = {
   accesorios: 'accesorios',   // rol -> id de la app en APPS
+  // Vendedores de Plan de Ahorro (13/11/2026): ven la tarjeta Precios y nada
+  // mas. Adentro del Portal de Precios el rol no hace falta — alla la lista
+  // AHORRO_SOLO (src/lib/acceso.ts) los deja solo en Planes de ahorro, Fichas
+  // y Mis presupuestos. Si entra uno nuevo: tildarle este rol Y sumarlo a esa
+  // lista, si no ve el portal entero.
+  ahorro: 'precios',
 };
 
 // Sesion vigente en memoria (para gates de UI).
@@ -454,8 +460,10 @@ const APPS = [
     // esto solo hace que el portal deje de contradecir al CRM.
     // dclement (Dominique): telemarketing de los leads Galicia, mismo usuario y clave (Fer, 28-10-2026).
     // nreynoso, gsacarelo, ajacobo y jtoloza (13-11-2026): vendedores de Plan de
-    // Ahorro. Tienen rol 'accesorios' —que ya les da la Lista de Accesorios y les
+    // Ahorro. Tienen el rol 'ahorro' —que les deja solo la tarjeta Precios y les
     // tapa el resto— y entran al CRM, donde tienen usuario propio en `vendedores`.
+    // (Arrancaron con rol 'accesorios', que se usaba para taparles el resto pero
+    // les mostraba la lista de accesorios en vez de Precios.)
     tambienRestringidos: ['repuestos', 'dclement', 'nreynoso', 'gsacarelo', 'ajacobo', 'jtoloza'],
   },
   {
@@ -1129,6 +1137,7 @@ function _mostrarUsuarioModal(modo, u) {
     { value: 'f01_admin', label: 'F01 admin', desc: 'Panel formularios (admin)' },
     { value: 'chat_admin', label: 'Chat (WhatsApp)', desc: 'Acceso a la inbox del chat con IA' },
     { value: 'accesorios', label: 'Lista de Accesorios', desc: 'Solo la lista de precios de accesorios VW' },
+    { value: 'ahorro', label: 'Plan de ahorro', desc: 'Solo Precios: Planes de ahorro, Fichas y Mis presupuestos' },
   ];
   const rolesMulti = (selArr) => {
     const sel = Array.isArray(selArr) && selArr.length ? selArr : [];
