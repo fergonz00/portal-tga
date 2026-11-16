@@ -654,6 +654,18 @@ const APPS = [
     // del SSO (tga_session) + esta misma whitelist. Sumar a alguien acá Y allá.
     requiereUsuario: ['mlubrano', 'fngonzalez', 'marianom'],
   },
+  {
+    id: 'autoahorro',
+    title: 'Autoahorro',
+    desc: 'Cartera completa de planes de ahorro: clientes, etapas de adjudicación y planes propios.',
+    url: 'https://autoahorro.titogonzalez.online',
+    icon: '🚗',
+    color: 'blue',
+    badge: 'Privado',
+    // La app re-valida la firma del SSO (tga_session) + su propia lista TGA_ACCESO en Vercel (planes-tga).
+    // Sumar a alguien acá Y allá.
+    requiereUsuario: ['fngonzalez', 'mlubrano', 'mgerez'],
+  },
 ];
 
 // =======================================================================
