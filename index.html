@@ -626,6 +626,7 @@ const APPS = [
     //   Patentamiento: mlubrano, fngonzalez (total) · nvera, dclement (carga) · vreyna, mgerez, dlopez (lectura)
     //   Carpetas:      mlubrano, fngonzalez (total) · mgerez, dlopez (supervisión) · megerez, alaso,
     //                  vfernandez (administrativas) · jmarquevich, cbedorrou (despacho de autos para exhibición) ·
+    //                  marianom (SOLO LECTURA: ve todas, no toca nada) ·
     //                  los vendedores de comprobantes-tga/config/carpetas.json
     requiereUsuario: ['mlubrano', 'fngonzalez', 'cgonzalez', 'vreyna', 'nvera', 'mgerez', 'dlopez',
       'megerez', 'alaso', 'vfernandez', 'jmarquevich', 'cbedorrou',
@@ -635,7 +636,11 @@ const APPS = [
       'mmarandola', 'fgonzalez',
       // Dominique (03/11/2026): el servidor ya le daba Comprobantes y la carga de
       // Patentamiento, pero faltaba aca y por eso no le aparecia la tarjeta.
-      'dclement'],
+      'dclement',
+      // Mariano Muñiz (16/11/2026): entra SOLO a Carpetas y SOLO para mirar.
+      // Es usuario restringido (USUARIOS_SOLO_SU_TARJETA): sin esta linea no ve
+      // la tarjeta. Lo que puede hacer adentro lo decide comprobantes-tga.
+      'marianom'],
   },
   {
     id: 'camaras',
