@@ -427,13 +427,14 @@ const APPS = [
   {
     id: 'ml-preguntas',
     title: 'Mercado Libre',
-    desc: 'Preguntas sin responder y ventas con su estado: responder, imprimir etiquetas y preparar despachos.',
+    desc: 'Preguntas, ventas con su estado y fotos de los avisos frenados.',
     url: 'https://precios.titogonzalez.online/mercadolibre',
     icon: '🛒',
     color: 'green',
     // Fer (24-11-2026): Maxi (mlopez) las contesta mientras Nadia está de licencia;
     // desde el 9-12 solo puede verlas (el corte vive en portal-precios/src/lib/acceso.ts).
-    requiereUsuario: ['fngonzalez', 'fgonzalez', 'cgonzalez', 'mlopez', 'nvera', 'nadiav'],
+    // dominique: SOLO la pestaña Fotos (el portal la manda directo ahí).
+    requiereUsuario: ['fngonzalez', 'fgonzalez', 'cgonzalez', 'mlopez', 'nvera', 'nadiav', 'dominique'],
   },
   {
     id: 'accesorios',
