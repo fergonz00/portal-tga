@@ -425,6 +425,17 @@ const APPS = [
     tambienRestringidos: ['marianom'],
   },
   {
+    id: 'ml-preguntas',
+    title: 'Preguntas Mercado Libre',
+    desc: 'Preguntas sin responder de ML: respondelas acá y se publican solas en Mercado Libre.',
+    url: 'https://precios.titogonzalez.online/ml-preguntas',
+    icon: '💬',
+    color: 'green',
+    // Fer (24-11-2026): Maxi (mlopez) las contesta mientras Nadia está de licencia;
+    // desde el 9-12 solo puede verlas (el corte vive en portal-precios/src/lib/acceso.ts).
+    requiereUsuario: ['fngonzalez', 'fgonzalez', 'cgonzalez', 'mlopez', 'nvera', 'nadiav'],
+  },
+  {
     id: 'accesorios',
     title: 'Lista de Accesorios',
     desc: 'Listas de precios de accesorios VW.',
